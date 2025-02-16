@@ -18,7 +18,7 @@ public class Shefrah1 {
             System.out.println("Waiting for client connection");
             
             Socket client = serverSocket.accept();          //accepting clients requists
-            
+             
             System.out.println("Connected to client");
             
             NewClinet clientThread = new NewClinet (client,clients);  // starting new thread and adding the client to the list
