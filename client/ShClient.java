@@ -1,5 +1,71 @@
+package shefrah1;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionListener;
 
-package com.mycompany.shefrah1;
+
+
+public class Shclient extends JFrame{
+
+    private JTextArea ConnectedPlayers;
+    private JButton PlayButton;
+    
+    
+    public Shclient(){
+        setTitle(" شفرة");
+        setSize(600,400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);//اذا قفل ما يوديه لفريم اخر"توقع"
+        
+        setLayout(new BorderLayout());
+        
+        JLabel Title= new JLabel(" اللاعبون المتصلون ", SwingConstants.CENTER);
+        Title.setFont(new Font("Arial", Font.BOLD,24));
+        
+        ConnectedPlayers = new JTextArea(20,50);
+        ConnectedPlayers.setEditable(false);
+        
+        PlayButton = new JButton(" انطلق");
+        
+        add(Title,BorderLayout.NORTH);
+        add(ConnectedPlayers, BorderLayout.CENTER);
+        
+         JPanel buttonPanel = new JPanel();
+        buttonPanel.add(PlayButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+    }
+    
+    // 
+    
+    
+    public void updateConnectedPlayers(String[] players) {
+        ConnectedPlayers.setText("");
+        for (String player : players) {
+            if (player != null && !player.isEmpty()) {
+                ConnectedPlayers.append(player + "\n");
+            }
+        }
+    }
+
+    public void addPlayButtonListener(ActionListener listener) {
+        PlayButton.addActionListener(listener);
+    }
+
+      public static void main(String[] args) {
+        // تشغيل واجهة التسجيل
+        SwingUtilities.invokeLater(() -> {
+            new Shclient().setVisible(true);
+        });
+    }
+
+
+
+} 
+
+
+
+
+/*package com.mycompany.shefrah1;
 
 import java.io.*;
 import java.net.*;
@@ -37,4 +103,4 @@ public class ShClient {
     void sendPhotoName(String currentPhoto) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
-}
+}*/
