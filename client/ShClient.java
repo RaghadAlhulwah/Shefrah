@@ -1,106 +1,95 @@
-package shefrah1;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
+import java.io.*;
+import java.net.*;
 
+public class ShClient extends JFrame {
+    private JTextArea connectedPlayers;
+    private JButton playButton;
+    private Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private String playerName;
 
+    public ShClient(Socket clientSocket) throws IOException {
+        socket = clientSocket;
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(socket.getOutputStream(), true);
 
-public class Shclient extends JFrame{
-
-    private JTextArea ConnectedPlayers;
-    private JButton PlayButton;
-    
-    
-    public Shclient(){
-        setTitle(" شفرة");
-        setSize(600,400);
+        setTitle("شفرة");
+        setSize(600, 400);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);//اذا قفل ما يوديه لفريم اخر"توقع"
-        
+        setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-        
-        JLabel Title= new JLabel(" اللاعبون المتصلون ", SwingConstants.CENTER);
-        Title.setFont(new Font("Arial", Font.BOLD,24));
-        
-        ConnectedPlayers = new JTextArea(20,50);
-        ConnectedPlayers.setEditable(false);
-        
-        PlayButton = new JButton(" انطلق");
-        
-        add(Title,BorderLayout.NORTH);
-        add(ConnectedPlayers, BorderLayout.CENTER);
-        
-         JPanel buttonPanel = new JPanel();
-        buttonPanel.add(PlayButton);
+
+        JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 24));
+
+        connectedPlayers = new JTextArea(20, 50);
+        connectedPlayers.setEditable(false);
+
+        playButton = new JButton("انطلق");
+
+        add(title, BorderLayout.NORTH);
+        add(connectedPlayers, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(playButton);
         add(buttonPanel, BorderLayout.SOUTH);
+
+        // Ask for player's name in Arabic
+        playerName = JOptionPane.showInputDialog(this, "أدخل اسمك:", "اسم اللاعب", JOptionPane.PLAIN_MESSAGE);
+        if (playerName == null || playerName.trim().isEmpty()) {
+            playerName = "اللاعب " + (int) (Math.random() * 1000);  // Default name if none entered
+        }
+
+        // Send the player's name to the server
+        out.println(playerName);
+
+        // Play button listener
+        playButton.addActionListener(e -> sendPlayCommand());
+
+        // Start a thread to read messages from the server
+        new Thread(this::readServerMessages).start();
     }
-    
-    // 
-    
-    
+
+    private void sendPlayCommand() {
+        out.println("play");
+    }
+
+    private void readServerMessages() {
+        try {
+            String serverMessage;
+            while ((serverMessage = in.readLine()) != null) {
+                System.out.println("Server: " + serverMessage);
+                if (serverMessage.startsWith("Players:")) {
+                    String playersList = serverMessage.substring(8); // Extract player list
+                    updateConnectedPlayers(playersList.split(","));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public void updateConnectedPlayers(String[] players) {
-        ConnectedPlayers.setText("");
+        connectedPlayers.setText("");
         for (String player : players) {
             if (player != null && !player.isEmpty()) {
-                ConnectedPlayers.append(player + "\n");
+                connectedPlayers.append(player + "\n");
             }
         }
     }
 
-    public void addPlayButtonListener(ActionListener listener) {
-        PlayButton.addActionListener(listener);
-    }
-
-      public static void main(String[] args) {
-        // تشغيل واجهة التسجيل
+    public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new Shclient().setVisible(true);
+            try {
+                Socket socket = new Socket("localhost", 1234);
+                ShClient client = new ShClient(socket);
+                client.setVisible(true);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
     }
-
-
-
-} 
-
-
-
-
-/*package com.mycompany.shefrah1;
-
-import java.io.*;
-import java.net.*;
-import java.util.*;
-
-public class ShClient {
-    private static final String Server_IP = "localhost";
-    private static final int Server_port = 9090;
- 
-        public static void main(String[] args) throws IOException {
-            
-          try(Socket socket = new Socket (Server_IP,Server_port)) {
-              Shefrah1 servcon=new Shefrah1(socket);
-              BufferedReader keyboard=new BufferedReader (new InputStreamReader(System.in));
-              PrintWriter out=new PrintWriter(socket.getOutputStream(),true);
-              new Thread ((Runnable) servcon).start(); 
-              try{
-                  while(true){
-                      System.out.println("> ");
-                      String command=keyboard.readLine();                     
-                      if(command.equals("quit")) break;
-                      out.println(command); 
-                  } // end of while loop
-              } catch (Exception e){
-                  e.printStackTrace();
-              }
-          }
-              System.exit(0);
-        }
-
-    ShClient(Socket client, ArrayList<ShClient> clients) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
-    void sendPhotoName(String currentPhoto) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-}*/
+}
