@@ -85,7 +85,7 @@ public class ShClient extends JFrame {
 
         public NameInputFrame() {
             setTitle("ادخل اسمك");
-            setSize(300, 150);
+            setSize(600, 300);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null); //يحط المكان الفريم بنص الشاشه بدل الزاوية
@@ -117,7 +117,7 @@ public class ShClient extends JFrame {
             }
 
             try {
-                Socket socket = new Socket("localhost", 1234);
+                Socket socket = new Socket("localhost", 3280);
                 ShClient client = new ShClient(socket, playerName);
                 client.setVisible(true);
                 this.dispose(); // Close the name input window

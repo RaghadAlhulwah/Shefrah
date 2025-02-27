@@ -4,15 +4,16 @@ import java.util.*;
 
 public class Shefrah1 {
     private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
+    private static int playCount = 0;
+    private static boolean gameStarted = false;
+    private static Timer gameTimer;
 
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(1234);
+        ServerSocket serverSocket = new ServerSocket(3280);
+        System.out.println("Server started...");
 
         while (true) {
-            System.out.println("Waiting for player connection...");
             Socket clientSocket = serverSocket.accept();
-            System.out.println("Player connected");
-
             ClientHandler clientHandler = new ClientHandler(clientSocket);
             waitingRoom.add(clientHandler);
             new Thread(clientHandler).start();
@@ -36,16 +37,14 @@ public class Shefrah1 {
             try {
                 playerName = in.readLine();
                 System.out.println("Player connected: " + playerName);
-
                 sendPlayersList();
 
                 String message;
                 while ((message = in.readLine()) != null) {
-                    System.out.println("Player says: " + message);
+                    System.out.println(playerName + " says: " + message);
                     if (message.equals("play")) {
-                        broadcastMessage("Game has started!");
+                        handlePlayRequest();
                     }
-                    sendPlayersList();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -54,6 +53,40 @@ public class Shefrah1 {
                 waitingRoom.remove(this);
                 sendPlayersList();
             }
+        }
+
+        private void handlePlayRequest() {
+            if (gameStarted) return; // Ignore if game already started
+
+            playCount++;
+            System.out.println("Play button pressed by " + playerName + " | Total plays: " + playCount);
+
+            if (playCount == 2) {
+                startGameTimer();
+            } else if (playCount >= 3) {
+                startGameNow();
+            }
+        }
+
+        private void startGameTimer() {
+            if (gameTimer != null) {
+                gameTimer.cancel();
+            }
+            System.out.println("Starting 20-second countdown...");
+            gameTimer = new Timer();
+            gameTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    startGameNow();
+                }
+            }, 20000);
+        }
+
+        private void startGameNow() {
+            if (gameStarted) return; // Prevent duplicate start
+            gameStarted = true;
+            System.out.println("Game started!");
+            broadcastMessage("Game Start");
         }
 
         private void sendPlayersList() {
@@ -81,7 +114,6 @@ public class Shefrah1 {
                 out.close();
                 socket.close();
             } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
