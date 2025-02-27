@@ -3,8 +3,8 @@ import java.net.*;
 import java.util.*;
 
 public class Shefrah1 {
-    private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
-    private static int playCount = 0;
+    private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();  //array list to handle connected clients 
+    private static int playCount = 0;  //variable to count players that 
     private static boolean gameStarted = false;
     private static Timer gameTimer;
 
