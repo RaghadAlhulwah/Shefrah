@@ -3,30 +3,35 @@ import java.net.*;
 import java.util.*;
 
 public class Shefrah1 {
-    private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();  //array list to handle connected clients 
-    private static int playCount = 0;  //variable to count players that 
-    private static boolean gameStarted = false;
-    private static Timer gameTimer;
+    
+    private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();  //array list to handle connected players 
+    private static int playCount = 0;                                         //Variable to count the number of players ready to play
+    private static boolean gameStarted = false;                               //variable to handle game state 
+    private static Timer gameTimer;                                           // timer 
 
+    // ************** server main ************** //
+    
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(3280);
+        ServerSocket serverSocket = new ServerSocket(3280);                  //creating socket with port # 3280
         System.out.println("Server started...");
 
         while (true) {
-            Socket clientSocket = serverSocket.accept();
+            Socket clientSocket = serverSocket.accept();                     //accepting client connection
             ClientHandler clientHandler = new ClientHandler(clientSocket);
             waitingRoom.add(clientHandler);
             new Thread(clientHandler).start();
         }
     }
 
+    // ************** ClientHandler ************** //
+    
     private static class ClientHandler implements Runnable {
         private Socket socket;
         private BufferedReader in;
         private PrintWriter out;
         private String playerName;
 
-        public ClientHandler(Socket socket) throws IOException {
+        public ClientHandler(Socket socket) throws IOException {                        // this method to handle client I/O 
             this.socket = socket;
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new PrintWriter(socket.getOutputStream(), true);
@@ -43,7 +48,7 @@ public class Shefrah1 {
                 while ((message = in.readLine()) != null) {
                     System.out.println(playerName + " says: " + message);
                     if (message.equals("play")) {
-                        handlePlayRequest();
+                        startPlayRoom();
                     }
                 }
             } catch (IOException e) {
@@ -55,11 +60,11 @@ public class Shefrah1 {
             }
         }
 
-        private void handlePlayRequest() {
-            if (gameStarted) return; // Ignore if game already started
+        private void startPlayRoom() {                              // this method handle play room starting 
+            if (gameStarted) return;                                   // Ignore if game already started
 
             playCount++;
-            System.out.println("Play button pressed by " + playerName + " | Total plays: " + playCount);
+            System.out.println("Play button pressed by " + playerName + " | Total players: " + playCount);
 
             if (playCount == 2) {
                 startGameTimer();
@@ -68,7 +73,7 @@ public class Shefrah1 {
             }
         }
 
-        private void startGameTimer() {
+        private void startGameTimer() {                             //
             if (gameTimer != null) {
                 gameTimer.cancel();
             }
