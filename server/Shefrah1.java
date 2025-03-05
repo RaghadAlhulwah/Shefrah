@@ -5,7 +5,8 @@ import java.util.*;
 public class Shefrah1 {
     
     private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();  //array list to handle connected players 
-    private static int playCount = 0;                                         //Variable to count the number of players ready to play
+    private static ArrayList<ClientHandler> ReadyPlayers = new ArrayList<>();
+    private static int playersCount = 0;                                         //Variable to count the number of players ready to play
     private static boolean gameStarted = false;                               //variable to handle game state 
     private static Timer gameTimer;                                           // timer 
 
@@ -19,6 +20,7 @@ public class Shefrah1 {
             Socket clientSocket = serverSocket.accept();                     //accepting client connection
             ClientHandler clientHandler = new ClientHandler(clientSocket);
             waitingRoom.add(clientHandler);
+            ReadyPlayers.add(clientHandler);
             new Thread(clientHandler).start();
         }
     }
@@ -60,18 +62,24 @@ public class Shefrah1 {
             }
         }
 
-        private void startPlayRoom() {                              // this method handle play room starting 
-            if (gameStarted) return;                                   // Ignore if game already started
+        private void startPlayRoom() {
+    if (gameStarted) return;
 
-            playCount++;
-            System.out.println("Play button pressed by " + playerName + " | Total players: " + playCount);
+    playersCount++;
+    System.out.println("Play button pressed by " + playerName + " | Total players: " + playersCount);
 
-            if (playCount == 2) {
-                startGameTimer();
-            } else if (playCount >= 3) {
-                startGameNow();
-            }
-        }
+    if (!ReadyPlayers.contains(this)) {
+        ReadyPlayers.add(this);
+    }
+
+    sendReadyPlayersList(); // Send ready players list update
+
+    if (playersCount == 2) {
+        startGameTimer();
+    } else if (playersCount == 3) {
+        startGameNow();
+    }
+}
 
         private void startGameTimer() {                             //
             if (gameTimer != null) {
@@ -106,14 +114,35 @@ public class Shefrah1 {
                 client.out.println(playersList.toString());
             }
         }
+        
+        private void sendReadyPlayersList() {
+            StringBuilder ReadyplayersList = new StringBuilder("Players:");
+            for (ClientHandler client : ReadyPlayers) {
+                ReadyplayersList.append(client.playerName).append(",");
+            }
+            if (ReadyplayersList.length() > 0) {
+                ReadyplayersList.setLength(ReadyplayersList.length() - 1);
+            }
+            for (ClientHandler client : waitingRoom) {
+    client.out.println(ReadyPlayers.toString());
+}
+
+        }
 
         private void broadcastMessage(String message) {
             for (ClientHandler client : waitingRoom) {
                 client.out.println(message);
             }
         }
+        
+        private void broadcastMessage2(String message) {
+            for (ClientHandler client : ReadyPlayers) {
+                client.out.println(message);
+            }
+        }
 
         private void closeConnections() {
+            System.out.println("Player "+playerName+" left the game!");
             try {
                 in.close();
                 out.close();
@@ -121,5 +150,6 @@ public class Shefrah1 {
             } catch (IOException e) {
             }
         }
-    }
-}
+    }}
+
+        
