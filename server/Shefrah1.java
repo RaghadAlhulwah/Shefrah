@@ -8,6 +8,7 @@ public class Shefrah1 {
     private static ArrayList<ClientHandler> ReadyPlayers = new ArrayList<>();
     private static boolean gameStarted = false;
     private static Timer gameTimer;
+    
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
@@ -98,14 +99,14 @@ public class Shefrah1 {
         }
 
         private void addReadyPlayer(ClientHandler player) {
-    synchronized (ReadyPlayers) {
-        if (!ReadyPlayers.contains(player)) {
-            ReadyPlayers.add(player);
-            System.out.println("Player " + player.playerName + " added to ReadyPlayers. List: " + ReadyPlayers.toString()); //Debug line
-            sendReadyPlayersList();
+            synchronized (ReadyPlayers) {
+                if (!ReadyPlayers.contains(player)) {
+                    ReadyPlayers.add(player);
+                    System.out.println("Player " + player.playerName + " added to ReadyPlayers. List: " + ReadyPlayers.toString());
+                    sendReadyPlayersList();
+                }
+            }
         }
-    }
-}
 
         private void sendPlayersList() {
             StringBuilder playersList = new StringBuilder("Players:");
@@ -123,23 +124,30 @@ public class Shefrah1 {
         }
 
         private void sendReadyPlayersList() {
-    StringBuilder readyPlayersList = new StringBuilder("ReadyPlayers:");
-    synchronized (ReadyPlayers) {
-        for (ClientHandler client : ReadyPlayers) {
-            readyPlayersList.append(client.playerName).append(",");
-        }
-        if (readyPlayersList.length() > 0) {
-            readyPlayersList.setLength(readyPlayersList.length() - 1);
-        }
+        StringBuilder readyPlayersList = new StringBuilder("ReadyPlayers:");
+        synchronized (ReadyPlayers) {
+            for (ClientHandler client : ReadyPlayers) {
+                readyPlayersList.append(client.playerName).append(",");
+            }
+            if (readyPlayersList.length() > 0) {
+                readyPlayersList.setLength(readyPlayersList.length() - 1);
+            }
 
-        System.out.println("Sending ReadyPlayers: " + readyPlayersList.toString()); //Debug line.
+            System.out.println("Sending ReadyPlayers: " + readyPlayersList.toString());
 
-        for (ClientHandler client : ReadyPlayers) {
-            client.out.println(readyPlayersList.toString());
-            System.out.println("Sending to: " + client.playerName); //Debug line
+            // Add a delay here (e.g., 500 milliseconds)
+            try {
+                Thread.sleep(500); // Add a 500ms delay
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            for (ClientHandler client : ReadyPlayers) {
+                client.out.println(readyPlayersList.toString());
+                System.out.println("Sending to: " + client.playerName);
+            }
         }
     }
-}
 
         private void broadcastMessage(String message) {
             synchronized (waitingRoom) {
@@ -148,7 +156,7 @@ public class Shefrah1 {
                 }
             }
             synchronized (ReadyPlayers) {
-                for(ClientHandler client : ReadyPlayers){
+                for (ClientHandler client : ReadyPlayers) {
                     client.out.println(message);
                 }
             }
