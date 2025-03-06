@@ -1,26 +1,27 @@
+// Server (Shefrah1.java)
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
 public class Shefrah1 {
-
-    private static ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
-    private static ArrayList<ClientHandler> ReadyPlayers = new ArrayList<>();
-    private static boolean gameStarted = false;
-    private static Timer gameTimer;
-    
+    private static List<ClientHandler> waitingRoom = Collections.synchronizedList(new ArrayList<>());
+    private static List<String> waitingPlayers = Collections.synchronizedList(new ArrayList<>());
+    private static int countdown = 60;
+    private static boolean timerRunning = false;
 
     public static void main(String[] args) throws IOException {
-        ServerSocket serverSocket = new ServerSocket(3280);
-        System.out.println("Server started...");
+        ServerSocket serverSocket = new ServerSocket(1234);
+        System.out.println("Server started. Waiting for player connections...");
 
         while (true) {
             Socket clientSocket = serverSocket.accept();
+            System.out.println("Player connected.");
+            
             ClientHandler clientHandler = new ClientHandler(clientSocket);
-            synchronized (waitingRoom) {
-                waitingRoom.add(clientHandler);
-            }
+            waitingRoom.add(clientHandler);
             new Thread(clientHandler).start();
+
+            checkAndStartGame();
         }
     }
 
@@ -40,145 +41,100 @@ public class Shefrah1 {
         public void run() {
             try {
                 playerName = in.readLine();
-                System.out.println("Player connected: " + playerName);
+                System.out.println("Player joined: " + playerName);
                 sendPlayersList();
+                broadcastWaitingPlayers();
 
                 String message;
                 while ((message = in.readLine()) != null) {
-                    System.out.println(playerName + " says: " + message);
-
                     if (message.equals("play")) {
-                        startPlayRoom();
-                    } else if (message.startsWith("Ready:")) {
-                        addReadyPlayer(this);
+                        synchronized (waitingPlayers) {
+                            if (!waitingPlayers.contains(playerName)) {
+                                waitingPlayers.add(playerName);
+                            }
+                        }
+                        broadcastWaitingPlayers();
+                        startCountdownIfNeeded();
                     }
+                    sendPlayersList();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                System.out.println("Player " + playerName + " disconnected.");
             } finally {
-                closeConnections();
+                removePlayer();
             }
         }
 
-        private void startPlayRoom() {
-            synchronized (waitingRoom) {
-                waitingRoom.remove(this);
-            }
-            synchronized (ReadyPlayers) {
-                if (!ReadyPlayers.contains(this)) {
-                    ReadyPlayers.add(this);
-                }
-            }
+        private void removePlayer() {
+            waitingRoom.remove(this);
+            waitingPlayers.remove(playerName);
             sendPlayersList();
-            sendReadyPlayersList();
-
-            if (ReadyPlayers.size() == 2) {
-                startGameTimer();
-            } else if (ReadyPlayers.size() == 3) {
-                startGameNow();
-            }
+            broadcastWaitingPlayers();
         }
 
-        private void startGameTimer() {
-            if (gameTimer != null) gameTimer.cancel();
-            System.out.println("Starting 20-second countdown...");
-            gameTimer = new Timer();
-            gameTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    startGameNow();
-                }
-            }, 20000);
+        public void sendMessage(String message) {
+            out.println(message);
         }
+    }
 
-        private void startGameNow() {
-            if (gameStarted) return;
-            gameStarted = true;
-            System.out.println("Game started!");
-            broadcastMessage("Game Start");
+    private static void sendPlayersList() {
+        String players = "Players:" + String.join(",", getPlayerNames());
+        broadcastMessage(players);
+    }
+
+    private static void broadcastWaitingPlayers() {
+        String waiting = "WaitingPlayers:" + String.join(",", waitingPlayers);
+        broadcastMessage(waiting);
+    }
+
+    private static List<String> getPlayerNames() {
+        List<String> names = new ArrayList<>();
+        for (ClientHandler client : waitingRoom) {
+            names.add(client.playerName);
         }
+        return names;
+    }
 
-        private void addReadyPlayer(ClientHandler player) {
-            synchronized (ReadyPlayers) {
-                if (!ReadyPlayers.contains(player)) {
-                    ReadyPlayers.add(player);
-                    System.out.println("Player " + player.playerName + " added to ReadyPlayers. List: " + ReadyPlayers.toString());
-                    sendReadyPlayersList();
-                }
-            }
-        }
-
-        private void sendPlayersList() {
-            StringBuilder playersList = new StringBuilder("Players:");
-            synchronized (waitingRoom) {
-                for (ClientHandler client : waitingRoom) {
-                    playersList.append(client.playerName).append(",");
-                }
-                if (playersList.length() > 0) {
-                    playersList.setLength(playersList.length() - 1);
-                }
-                for (ClientHandler client : waitingRoom) {
-                    client.out.println(playersList.toString());
-                }
-            }
-        }
-
-        private void sendReadyPlayersList() {
-        StringBuilder readyPlayersList = new StringBuilder("ReadyPlayers:");
-        synchronized (ReadyPlayers) {
-            for (ClientHandler client : ReadyPlayers) {
-                readyPlayersList.append(client.playerName).append(",");
-            }
-            if (readyPlayersList.length() > 0) {
-                readyPlayersList.setLength(readyPlayersList.length() - 1);
-            }
-
-            System.out.println("Sending ReadyPlayers: " + readyPlayersList.toString());
-
-            // Add a delay here (e.g., 500 milliseconds)
-            try {
-                Thread.sleep(500); // Add a 500ms delay
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            for (ClientHandler client : ReadyPlayers) {
-                client.out.println(readyPlayersList.toString());
-                System.out.println("Sending to: " + client.playerName);
+    private static void broadcastMessage(String message) {
+        synchronized (waitingRoom) {
+            for (ClientHandler client : waitingRoom) {
+                client.sendMessage(message);
             }
         }
     }
 
-        private void broadcastMessage(String message) {
-            synchronized (waitingRoom) {
-                for (ClientHandler client : waitingRoom) {
-                    client.out.println(message);
+    private static void startCountdownIfNeeded() {
+        if (waitingPlayers.size() == 2 && !timerRunning) {
+            timerRunning = true;
+            new Thread(() -> {
+                while (countdown > 0 && waitingPlayers.size() < 4) {
+                    broadcastMessage("Timer:" + countdown);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    countdown--;
                 }
-            }
-            synchronized (ReadyPlayers) {
-                for (ClientHandler client : ReadyPlayers) {
-                    client.out.println(message);
-                }
-            }
+                System.out.println("Game Start!");
+                broadcastMessage("GameStart");
+                resetGameState();
+            }).start();
         }
+    }
 
-        private void closeConnections() {
-            System.out.println("Player " + playerName + " left!");
-            try {
-                in.close();
-                out.close();
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            synchronized (waitingRoom) {
-                waitingRoom.remove(this);
-            }
-            synchronized (ReadyPlayers) {
-                ReadyPlayers.remove(this);
-            }
-            sendPlayersList();
-            sendReadyPlayersList();
+    private static void checkAndStartGame() {
+        if (waitingPlayers.size() >= 4) {
+            countdown = 0;
+            System.out.println("Game Start!");
+            broadcastMessage("GameStart");
+            resetGameState();
         }
+    }
+
+    private static void resetGameState() {
+        countdown = 60;
+        timerRunning = false;
+        waitingPlayers.clear();
     }
 }
