@@ -3,218 +3,255 @@ import java.awt.*;
 import java.io.*;
 import java.net.*;
 
-public class ShClient1 {
+public class ShClient extends JFrame {
+    private JTextArea connectedPlayers; // منطقة نصية لعرض اللاعبين المتصلين
+    private JButton playButton; // زر لتحديد أن اللاعب جاهز
+    private Socket socket; // سوكيت للاتصال بالسيرفر
+    private PrintWriter out; // لإرسال الرسائل إلى السيرفر
+    private BufferedReader in; // لقراءة الرسائل من السيرفر
+    private String playerName; // اسم اللاعب
 
-    
+    public ShClient(Socket clientSocket, String playerName) throws IOException {
+        this.socket = clientSocket;
+        this.playerName = playerName;
+
+        // تهيئة قنوات الإدخال والإخراج
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(socket.getOutputStream(), true);
+
+        // إعداد النافذة الرئيسية
+        setTitle("شفرة");
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        // عنوان النافذة
+        JLabel title = new JLabel("اللاعبون المنتظرون", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 24));
+
+        // منطقة نصية لعرض اللاعبين المتصلين
+        connectedPlayers = new JTextArea(20, 50);
+        connectedPlayers.setEditable(false);
+
+        // زر "جاهز"
+        playButton = new JButton("جاهز");
+
+        // إضافة المكونات إلى النافذة
+        add(title, BorderLayout.NORTH);
+        add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(playButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // إرسال اسم اللاعب إلى السيرفر
+        out.println(playerName);
+
+        // إضافة مستمع لزر "جاهز"
+        playButton.addActionListener(e -> {
+            out.println("play"); // إعلام السيرفر أن اللاعب جاهز
+            openReadyPlayersFrame(); // فتح نافذة "اللاعبون الجاهزون"
+        });
+
+        // بدء ثيل للاستماع لرسائل السيرفر
+        new Thread(this::readServerMessages).start();
+    }
+
+    // الاستماع لرسائل السيرفر
+    private void readServerMessages() {
+        try {
+            String serverMessage;
+            while ((serverMessage = in.readLine()) != null) {
+                System.out.println("السيرفر: " + serverMessage);
+                if (serverMessage.startsWith("Players:")) {
+                    // تحديث قائمة اللاعبين المتصلين
+                    String playersList = serverMessage.substring(8);
+                    updateConnectedPlayers(playersList.split(","));
+                } else if (serverMessage.startsWith("WaitingPlayers:")) {
+                    // تحديث قائمة اللاعبين المنتظرين
+                    String waitingList = serverMessage.substring(15);
+                    updateWaitingPlayers(waitingList.split(","));
+                } else if (serverMessage.startsWith("Timer:")) {
+                    // تحديث المؤقت
+                    int timeLeft = Integer.parseInt(serverMessage.substring(6));
+                    updateTimer(timeLeft);
+                } else if (serverMessage.equals("GameStart")) {
+                    // فتح نافذة "بدء اللعبة"
+                    openGameStartFrame();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // تحديث قائمة اللاعبين المتصلين في الواجهة
+    private void updateConnectedPlayers(String[] players) {
+        SwingUtilities.invokeLater(() -> {
+            connectedPlayers.setText("");
+            for (String player : players) {
+                if (player != null && !player.isEmpty()) {
+                    connectedPlayers.append(player + "\n");
+                }
+            }
+        });
+    }
+
+    // تحديث قائمة اللاعبين المنتظرين في الواجهة
+    private void updateWaitingPlayers(String[] players) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    ReadyPlayersFrame readyPlayersFrame = (ReadyPlayersFrame) window;
+                    readyPlayersFrame.updateReadyPlayers(players);
+                }
+            }
+        });
+    }
+
+    // تحديث المؤقت في الواجهة
+    private void updateTimer(int timeLeft) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    ReadyPlayersFrame readyPlayersFrame = (ReadyPlayersFrame) window;
+                    readyPlayersFrame.updateTimer(timeLeft);
+                }
+            }
+        });
+    }
+
+    // فتح نافذة "اللاعبون الجاهزون"
+    private void openReadyPlayersFrame() {
+        SwingUtilities.invokeLater(() -> {
+            ReadyPlayersFrame readyPlayersFrame = new ReadyPlayersFrame(playerName);
+            readyPlayersFrame.setVisible(true);
+            this.setVisible(false); // إخفاء النافذة الحالية
+        });
+    }
+
+    // فتح نافذة "بدء اللعبة"
+    private void openGameStartFrame() {
+        SwingUtilities.invokeLater(() -> {
+            JFrame gameStartFrame = new JFrame("بدء اللعبة");
+            gameStartFrame.setSize(400, 300);
+            gameStartFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            gameStartFrame.setLocationRelativeTo(null);
+
+            JLabel message = new JLabel("اللعبة بدأت!", SwingConstants.CENTER);
+            message.setFont(new Font("Arial", Font.BOLD, 24));
+
+            gameStartFrame.add(message, BorderLayout.CENTER);
+            gameStartFrame.setVisible(true);
+
+            this.dispose(); // إغلاق النافذة الحالية
+        });
+    }
+
+    // الدالة الرئيسية لبدء العميل
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new NameFrame().setVisible(true));
+        SwingUtilities.invokeLater(NameInputFrame::new);
+    }
+}
+
+// نافذة لإدخال اسم اللاعب
+class NameInputFrame extends JFrame {
+    private JTextField nameField; // حقل نصي لإدخال اسم اللاعب
+    private JButton okButton; // زر لتأكيد الاسم
+
+    public NameInputFrame() {
+        setTitle("ادخل اسمك");
+        setSize(300, 150);
+        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        // نص الإرشاد
+        JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
+        nameField = new JTextField(15);
+
+        // زر "موافق"
+        okButton = new JButton("موافق");
+        okButton.addActionListener(e -> submitName());
+
+        // إضافة المكونات إلى النافذة
+        JPanel inputPanel = new JPanel();
+        inputPanel.add(nameField);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(okButton);
+
+        add(prompt, BorderLayout.NORTH);
+        add(inputPanel, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        setVisible(true);
     }
 
-    //******** first frame to enter player name *********//
-    public static class NameFrame extends JFrame {
-
-        private JTextField nameField;
-        private JButton okButton;
-
-        public NameFrame() {
-            setTitle("شفرة");
-            setSize(600, 400);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
-
-            JLabel lbl1EnterName = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
-            nameField = new JTextField(15);
-            okButton = new JButton("موافق");
-
-            okButton.addActionListener(e -> submitName());
-
-            JPanel inputPanel = new JPanel();
-            inputPanel.add(nameField);
-
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.add(okButton);
-
-            add(lbl1EnterName, BorderLayout.NORTH);
-            add(inputPanel, BorderLayout.CENTER);
-            add(buttonPanel, BorderLayout.SOUTH);
+    // إرسال اسم اللاعب والاتصال بالسيرفر
+    private void submitName() {
+        String playerName = nameField.getText().trim();
+        if (playerName.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "يرجى إدخال اسم", "خطأ", JOptionPane.ERROR_MESSAGE);
+            return;
         }
 
-        private void submitName() {
-            String pName = nameField.getText().trim();
-
-            if (pName.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "يرجى إدخال اسم صحيح!", "خطأ", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            try {
-                Socket socket = new Socket("localhost", 3280);
-                new ConnectedPlayersFrame(socket, pName).setVisible(true);
-                this.dispose();
-            } catch (IOException e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
-            }
+        try {
+            // الاتصال بالسيرفر
+            Socket socket = new Socket("localhost", 1234);
+            ShClient client = new ShClient(socket, playerName);
+            client.setVisible(true);
+            this.dispose(); // إغلاق نافذة إدخال الاسم
+        } catch (IOException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
         }
     }
+}
 
-    //******** second frame to show connected players *********//
-    public static class ConnectedPlayersFrame extends JFrame {
+// نافذة لعرض اللاعبين الجاهزين والمؤقت
+class ReadyPlayersFrame extends JFrame {
+    private JTextArea readyPlayersArea; // منطقة نصية لعرض اللاعبين الجاهزين
+    private JLabel timerLabel; // نص لعرض المؤقت
 
-        private Socket socket;
-        private PrintWriter out;
-        private BufferedReader in;
-        private JTextArea connectedPlayers;
-        private JButton playButton;
-        private String playerName;
+    public ReadyPlayersFrame(String playerName) {
+        setTitle("اللاعبون الجاهزون - " + playerName);
+        setSize(400, 300);
+        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        public ConnectedPlayersFrame(Socket socket, String playerName) throws IOException {
-            this.socket = socket;
-            this.playerName = playerName;
+        // منطقة نصية للاعبين الجاهزين
+        readyPlayersArea = new JTextArea();
+        readyPlayersArea.setEditable(false);
+        readyPlayersArea.setText("اللاعبون الجاهزون:\n" + playerName);
 
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
+        // نص المؤقت
+        timerLabel = new JLabel("الوقت المتبقي: 60 ثانية", SwingConstants.CENTER);
+        timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
 
-            setTitle("شفرة");
-            setSize(600, 400);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
-
-            JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
-            title.setFont(new Font("Arial", Font.BOLD, 24));
-
-            connectedPlayers = new JTextArea(10, 30);
-            connectedPlayers.setEditable(false);
-
-            playButton = new JButton("انطلق");
-            playButton.addActionListener(e -> sendPlayCommand());
-
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.add(playButton);
-
-            add(title, BorderLayout.NORTH);
-            add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
-            add(buttonPanel, BorderLayout.SOUTH);
-
-            out.println(playerName);
-
-            new Thread(this::readServerMessages).start();
-        }
-
-        private void sendPlayCommand() {
-            out.println("play");
-            playButton.setEnabled(false);
-
-            SwingUtilities.invokeLater(() -> {
-                try {
-                    new ReadyPlayersFrame(socket, playerName).setVisible(true);
-                    this.dispose();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        private void readServerMessages() {
-            try {
-                String serverMessage;
-                while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("Received in ConnectedPlayersFrame: " + serverMessage);
-                    if (serverMessage.startsWith("Players:")) {
-                        String playersList = serverMessage.substring(8);
-                        updateConnectedPlayers(playersList.split(","));
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private void updateConnectedPlayers(String[] players) {
-            SwingUtilities.invokeLater(() -> {
-                connectedPlayers.setText("");
-                for (String player : players) {
-                    if (!player.isEmpty()) {
-                        connectedPlayers.append(player + "\n");
-                    }
-                }
-            });
-        }
+        // إضافة المكونات إلى النافذة
+        add(new JScrollPane(readyPlayersArea), BorderLayout.CENTER);
+        add(timerLabel, BorderLayout.SOUTH);
     }
 
-    //******** third frame to show ready players name *********//
-    public static class ReadyPlayersFrame extends JFrame {
-
-        private Socket socket;
-        private PrintWriter out;
-        private BufferedReader in;
-        private JTextArea readyPlayers;
-        private String playerName;
-
-        public ReadyPlayersFrame(Socket socket, String playerName) throws IOException {
-            this.socket = socket;
-            this.playerName = playerName;
-
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new PrintWriter(socket.getOutputStream(), true);
-
-            setTitle("غرفة الانتظار");
-            setSize(600, 400);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
-
-            JLabel title = new JLabel("اللاعبون المستعدون", SwingConstants.CENTER);
-            title.setFont(new Font("Arial", Font.BOLD, 24));
-
-            readyPlayers = new JTextArea(10, 30);
-            readyPlayers.setEditable(false);
-
-            JButton waitingMessage = new JButton("انتظر بدء اللعبة...");
-            waitingMessage.setEnabled(false);
-
-            JPanel buttonPanel = new JPanel();
-            buttonPanel.add(waitingMessage);
-
-            add(title, BorderLayout.NORTH);
-            add(new JScrollPane(readyPlayers), BorderLayout.CENTER);
-            add(buttonPanel, BorderLayout.SOUTH);
-
-            out.println("Ready: " + playerName);
-
-            new Thread(this::readServerMessages).start();
-        }
-
-        private void readServerMessages() {
-            try {
-                String serverMessage;
-                while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("Received: " + serverMessage);
-                    if (serverMessage.startsWith("ReadyPlayers:")) {
-                        String readyList = serverMessage.substring(13);
-                        updateReadyPlayers(readyList.split(","));
-                    }
+    // تحديث قائمة اللاعبين الجاهزين
+    public void updateReadyPlayers(String[] players) {
+        SwingUtilities.invokeLater(() -> {
+            readyPlayersArea.setText("اللاعبون الجاهزون:\n");
+            for (String player : players) {
+                if (player != null && !player.isEmpty()) {
+                    readyPlayersArea.append(player + "\n");
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             }
-        }
+        });
+    }
 
-        private void updateReadyPlayers(String[] players) {
-            SwingUtilities.invokeLater(() -> {
-                readyPlayers.setText("");
-                if (players != null && players.length > 0 && !(players.length == 1 && players[0].trim().isEmpty())) {
-                    for (String player : players) {
-                        if (!player.trim().isEmpty()) {
-                            readyPlayers.append(player.trim() + "\n");
-                        }
-                    }
-                }
-                readyPlayers.revalidate();
-                readyPlayers.repaint();
-            });
-        }
+    // تحديث المؤقت
+    public void updateTimer(int timeLeft) {
+        SwingUtilities.invokeLater(() -> {
+            timerLabel.setText("الوقت المتبقي: " + timeLeft + " ثانية");
+        });
     }
 }
