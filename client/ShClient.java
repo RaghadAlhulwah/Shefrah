@@ -1,6 +1,5 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
 import java.io.*;
 import java.net.*;
 
@@ -10,7 +9,6 @@ public class ShClient1 {
         SwingUtilities.invokeLater(() -> new NameFrame().setVisible(true));
     }
 
-    // ********** First Frame: Name input ********** //
     public static class NameFrame extends JFrame {
 
         private JTextField nameField;
@@ -27,7 +25,6 @@ public class ShClient1 {
             nameField = new JTextField(15);
             okButton = new JButton("موافق");
 
-            // Button to submit the name
             okButton.addActionListener(e -> submitName());
 
             JPanel inputPanel = new JPanel();
@@ -51,7 +48,6 @@ public class ShClient1 {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                // Move to connected players frame
                 new ConnectedPlayersFrame(socket, pName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
@@ -61,7 +57,6 @@ public class ShClient1 {
         }
     }
 
-    // ********** Second Frame: Connected players ********** //
     public static class ConnectedPlayersFrame extends JFrame {
 
         private Socket socket;
@@ -100,7 +95,6 @@ public class ShClient1 {
             add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
             add(buttonPanel, BorderLayout.SOUTH);
 
-            // Send player name to server
             out.println(playerName);
 
             new Thread(this::readServerMessages).start();
@@ -124,7 +118,7 @@ public class ShClient1 {
             try {
                 String serverMessage;
                 while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("Received in ConnectedPlayersFrame: " + serverMessage); //Debug line.
+                    System.out.println("Received in ConnectedPlayersFrame: " + serverMessage);
                     if (serverMessage.startsWith("Players:")) {
                         String playersList = serverMessage.substring(8);
                         updateConnectedPlayers(playersList.split(","));
@@ -146,9 +140,7 @@ public class ShClient1 {
             });
         }
     }
-    
 
-    // ********** Third Frame: Ready players ********** //
     public static class ReadyPlayersFrame extends JFrame {
 
         private Socket socket;
@@ -195,7 +187,7 @@ public class ShClient1 {
             try {
                 String serverMessage;
                 while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("Received: " + serverMessage); //Debug line.
+                    System.out.println("Received: " + serverMessage);
                     if (serverMessage.startsWith("ReadyPlayers:")) {
                         String readyList = serverMessage.substring(13);
                         updateReadyPlayers(readyList.split(","));
