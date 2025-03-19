@@ -3,35 +3,27 @@ import java.net.*;
 import java.util.*;
 
 public class Shefrah1 {
-    // قائمةاللاعبين المتصلين تتحمل الثريدز افضل من القائمة العادية
-    private static List<ClientHandler> waitingRoom = Collections.synchronizedList(new ArrayList<>());
-    // قائمةاللاعبين الجاهزين تتحمل الثريدز افضل من القائمة العادية
-    private static List<String> waitingPlayers = Collections.synchronizedList(new ArrayList<>());
-    // مؤقت العد التنازلي لبدء اللعبة
-    private static int countdown = 60;
-    //متغير للتأكد  إذا كان المؤقت يشتغل 
+    private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
+    private static final ArrayList<String> waitingPlayers = new ArrayList<>();
+    private static int countdown = 30;
     private static boolean timerRunning = false;
+    private static Timer gameTimer;
 
     public static void main(String[] args) throws IOException {
-        // السوكت
-        ServerSocket serverSocket = new ServerSocket(1234);
-        System.out.println("تم بدء السيرفر. في انتظار اتصال اللاعبين...");
+        ServerSocket serverSocket = new ServerSocket(3280);
+        System.out.println("Server started...");
 
-        // قبول اتصالات اللاعبين بشكل مستمر
         while (true) {
             Socket clientSocket = serverSocket.accept();
-            System.out.println("لاعب متصل.");
-
             ClientHandler clientHandler = new ClientHandler(clientSocket);
-            waitingRoom.add(clientHandler);
-            new Thread(clientHandler).start(); 
-
-            // نتأكد إذا اللعبه تقدر تشتغل
-            checkAndStartGame();
+            synchronized (waitingRoom) {
+                waitingRoom.add(clientHandler);
+            }
+            new Thread(clientHandler).start();
+            sendPlayersList(); // Ensure the player list is updated upon new connection
         }
     }
 
-    // كلاس داخلي للتعامل مع الاتصال بكل لاعب
     private static class ClientHandler implements Runnable {
         private Socket socket;
         private BufferedReader in;
@@ -47,79 +39,72 @@ public class Shefrah1 {
         @Override
         public void run() {
             try {
-                // قراءة اسم اللاعب
                 playerName = in.readLine();
                 if (playerName == null || playerName.trim().isEmpty()) {
-                    out.println("خطأ: اسم غير صالح");
+                    out.println("Error: Invalid name");
                     socket.close();
                     return;
                 }
-                System.out.println("لاعب انضم: " + playerName);
-
-                // إرسال قائمة اللاعبين المتصلين إلى جميع اللاعبين
+                System.out.println("Player joined: " + playerName);
                 sendPlayersList();
                 broadcastWaitingPlayers();
 
-                // الاستماع للرسائل من اللاعب
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (message.equals("play")) {
-                        // إضافة اللاعب إلى قائمة الانتظار إذا ضغط على "جاهز"
                         synchronized (waitingPlayers) {
                             if (!waitingPlayers.contains(playerName)) {
                                 waitingPlayers.add(playerName);
                             }
                         }
-                        broadcastWaitingPlayers(); // تحديث قائمة الانتظار للاعبين
-                        startCountdownIfNeeded(); // بدء العد التنازلي إذا لزم الأمر
-                        checkAndStartGame(); // التحقق مما إذا كانت اللعبة يمكن أن تبدأ
+                        broadcastWaitingPlayers();
+                        startCountdownIfNeeded();
+                        checkAndStartGame();
                     }
-                    sendPlayersList(); // تحديث قائمة اللاعبين المتصلين
                 }
             } catch (IOException e) {
-                System.out.println("لاعب " + playerName + " انقطع.");
+                System.out.println("Player " + playerName + " disconnected.");
             } finally {
-                // إزالة اللاعب عند انقطاع الاتصال
                 removePlayer();
             }
         }
 
-        // إزالة اللاعب من قوائم السيرفر
         private void removePlayer() {
-            waitingRoom.remove(this);
-            waitingPlayers.remove(playerName);
+            synchronized (waitingRoom) {
+                waitingRoom.remove(this);
+            }
+            synchronized (waitingPlayers) {
+                waitingPlayers.remove(playerName);
+            }
             sendPlayersList();
             broadcastWaitingPlayers();
         }
 
-        // إرسال رسالة إلى هذا اللاعب
         public void sendMessage(String message) {
             out.println(message);
         }
     }
 
-    // إرسال قائمة جميع اللاعبين المتصلين إلى جميع العملاء
     private static void sendPlayersList() {
         String players = "Players:" + String.join(",", getPlayerNames());
         broadcastMessage(players);
     }
 
-    // إرسال قائمة اللاعبين المنتظرين إلى جميع العملاء
     private static void broadcastWaitingPlayers() {
         String waiting = "WaitingPlayers:" + String.join(",", waitingPlayers);
         broadcastMessage(waiting);
     }
 
-    // الحصول على أسماء جميع اللاعبين المتصلين
     private static List<String> getPlayerNames() {
         List<String> names = new ArrayList<>();
-        for (ClientHandler client : waitingRoom) {
-            names.add(client.playerName);
+        synchronized (waitingRoom) {
+            for (ClientHandler client : waitingRoom) {
+                names.add(client.playerName);
+            }
         }
         return names;
     }
 
-    // بث رسالة إلى جميع اللاعبين المتصلين
     private static void broadcastMessage(String message) {
         synchronized (waitingRoom) {
             for (ClientHandler client : waitingRoom) {
@@ -128,45 +113,52 @@ public class Shefrah1 {
         }
     }
 
-    // بدء العد التنازلي إذا كان هناك لاعبين جاهزين
     private static void startCountdownIfNeeded() {
-        if (waitingPlayers.size() == 2 && !timerRunning) {
+        if (waitingPlayers.size() >= 2 && !timerRunning) {
             timerRunning = true;
-            new Thread(() -> {
-                while (countdown > 0 && waitingPlayers.size() < 4) {
-                    broadcastMessage("Timer:" + countdown); // بث قيمة المؤقت
-                    try {
-                        Thread.sleep(1000); // الانتظار لمدة ثانية
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+            gameTimer = new Timer();
+            gameTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    if (waitingPlayers.size() >= 4) {
+                        gameTimer.cancel();
+                        checkAndStartGame();
+                        return;
                     }
+                    if (countdown <= 0) {
+                        gameTimer.cancel();
+                        checkAndStartGame();
+                        return;
+                    }
+                    broadcastMessage("Timer:" + countdown);
                     countdown--;
                 }
-                // بدء اللعبة إذا كان هناك على الأقل لاعبين جاهزين
-                if (waitingPlayers.size() >= 2) {
-                    System.out.println("اللعبة بدأت!");
-                    broadcastMessage("GameStart");
-                }
-                resetGameState(); // إعادة تعيين حالة اللعبة
-            }).start();
+            }, 0, 1000);
         }
     }
 
-    // التحقق مما إذا كان هناك 4 لاعبين جاهزين وبدء اللعبة فورًا
     private static void checkAndStartGame() {
-        if (waitingPlayers.size() >= 4) {
-            countdown = 0; // إيقاف المؤقت
+        if (waitingPlayers.size() >= 4 || (timerRunning && countdown <= 0)) {
+            if (gameTimer != null) {
+                gameTimer.cancel();
+            }
             timerRunning = false;
-            System.out.println("اللعبة بدأت!");
-            broadcastMessage("GameStart");
-            resetGameState();
+            countdown = 30;
+            System.out.println("Game started!");
+
+            for (ClientHandler client : waitingRoom) {
+                if (waitingPlayers.contains(client.playerName)) {
+                    client.sendMessage("GameStart");
+                } else {
+                    client.sendMessage("StayInWaitingRoom");
+                }
+            }
+            closePreviousFrames();
         }
     }
 
-    // إعادة تعيين حالة اللعبة
-    private static void resetGameState() {
-        countdown = 60;
-        timerRunning = false;
-        waitingPlayers.clear();
+    private static void closePreviousFrames() {
+        broadcastMessage("ClosePreviousFrames");
     }
 }
+
