@@ -3,7 +3,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.*;
 
-public class ShClient extends JFrame {
+public class ShClient1 extends JFrame {
     private JTextArea connectedPlayers; // منطقة نصية لعرض اللاعبين المتصلين
     private JButton playButton; // زر لتحديد أن اللاعب جاهز
     private Socket socket; // سوكيت للاتصال بالسيرفر
@@ -11,7 +11,7 @@ public class ShClient extends JFrame {
     private BufferedReader in; // لقراءة الرسائل من السيرفر
     private String playerName; // اسم اللاعب
 
-    public ShClient(Socket clientSocket, String playerName) throws IOException {
+    public ShClient1(Socket clientSocket, String playerName) throws IOException {
         this.socket = clientSocket;
         this.playerName = playerName;
 
@@ -80,11 +80,24 @@ public class ShClient extends JFrame {
                     // فتح نافذة "بدء اللعبة"
                     openGameStartFrame();
                 }
+                else if (serverMessage.equals("ClosePreviousFrames")) {
+                    closePreviousFrames();
+}
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+    
+    private void closePreviousFrames() {
+    SwingUtilities.invokeLater(() -> {
+        for (Window window : Window.getWindows()) {
+            if (window instanceof ReadyPlayersFrame) {
+                window.dispose();
+            }
+        }
+    });
+}
 
     // تحديث قائمة اللاعبين المتصلين في الواجهة
     private void updateConnectedPlayers(String[] players) {
@@ -129,6 +142,7 @@ public class ShClient extends JFrame {
             readyPlayersFrame.setVisible(true);
             this.setVisible(false); // إخفاء النافذة الحالية
         });
+        this.dispose();
     }
 
     // فتح نافذة "بدء اللعبة"
@@ -199,8 +213,8 @@ class NameInputFrame extends JFrame {
 
         try {
             // الاتصال بالسيرفر
-            Socket socket = new Socket("localhost", 1234);
-            ShClient client = new ShClient(socket, playerName);
+            Socket socket = new Socket("localhost", 3280);
+            ShClient1 client = new ShClient1(socket, playerName);
             client.setVisible(true);
             this.dispose(); // إغلاق نافذة إدخال الاسم
         } catch (IOException e) {
@@ -228,7 +242,7 @@ class ReadyPlayersFrame extends JFrame {
         readyPlayersArea.setText("اللاعبون الجاهزون:\n" + playerName);
 
         // نص المؤقت
-        timerLabel = new JLabel("الوقت المتبقي: 60 ثانية", SwingConstants.CENTER);
+        timerLabel = new JLabel("الوقت المتبقي: 30 ثانية", SwingConstants.CENTER);
         timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
 
         // إضافة المكونات إلى النافذة
