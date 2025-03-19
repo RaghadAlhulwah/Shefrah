@@ -3,7 +3,7 @@ import java.awt.*;
 import java.io.*;
 import java.net.*;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private JTextArea connectedPlayers; // منطقة نصية لعرض اللاعبين المتصلين
     private JButton playButton; // زر لتحديد أن اللاعب جاهز
     private Socket socket; // سوكيت للاتصال بالسيرفر
@@ -11,7 +11,7 @@ public class ShClient1 extends JFrame {
     private BufferedReader in; // لقراءة الرسائل من السيرفر
     private String playerName; // اسم اللاعب
 
-    public ShClient1(Socket clientSocket, String playerName) throws IOException {
+    public ShClient(Socket clientSocket, String playerName) throws IOException {
         this.socket = clientSocket;
         this.playerName = playerName;
 
@@ -145,24 +145,53 @@ public class ShClient1 extends JFrame {
         this.dispose();
     }
 
-    // فتح نافذة "بدء اللعبة"
-    private void openGameStartFrame() {
-        SwingUtilities.invokeLater(() -> {
-            JFrame gameStartFrame = new JFrame("بدء اللعبة");
-            gameStartFrame.setSize(400, 300);
-            gameStartFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            gameStartFrame.setLocationRelativeTo(null);
+    // فتح نافذة "بدء اللعبة" مع عرض صورة
 
-            JLabel message = new JLabel("اللعبة بدأت!", SwingConstants.CENTER);
-            message.setFont(new Font("Arial", Font.BOLD, 24));
+private void openGameStartFrame() {
+    SwingUtilities.invokeLater(() -> {
+        JFrame gameStartFrame = new JFrame("بدء اللعبة");
+        gameStartFrame.setSize(600, 600);
+        gameStartFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        gameStartFrame.setLocationRelativeTo(null);
+        gameStartFrame.setLayout(new BorderLayout());
 
-            gameStartFrame.add(message, BorderLayout.CENTER);
-            gameStartFrame.setVisible(true);
+        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 
-            this.dispose(); // إغلاق النافذة الحالية
+        try {
+            // تحميل الصورة وضبط حجمها
+            ImageIcon originalImage = new ImageIcon(getClass().getResource("/shefrah2/imgSh.png"));
+            Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
+            ImageIcon resizedIcon = new ImageIcon(scaledImage);
+            JLabel displayField = new JLabel(resizedIcon);
+            imagePanel.add(displayField);
+        } catch (Exception e) {
+            System.out.println("Image cannot be found!");
+            JLabel errorMessage = new JLabel("الصورة غير موجودة!", SwingConstants.CENTER);
+            imagePanel.add(errorMessage);
+        }
+
+        // إنشاء حقل إدخال النص وزر الإرسال
+        JTextField textField = new JTextField(20);
+        JButton submitButton = new JButton("إرسال");
+
+        submitButton.addActionListener(e -> {
+            String userInput = textField.getText();
+            System.out.println("تم إدخال: " + userInput);
+            JOptionPane.showMessageDialog(gameStartFrame, "لقد أدخلت: " + userInput);
         });
-    }
 
+        inputPanel.add(textField);
+        inputPanel.add(submitButton);
+
+        // إضافة اللوحات إلى النافذة
+        gameStartFrame.add(imagePanel, BorderLayout.CENTER);
+        gameStartFrame.add(inputPanel, BorderLayout.SOUTH);
+
+        gameStartFrame.setVisible(true);
+        this.dispose(); // إغلاق النافذة الحالية
+    });
+}
     // الدالة الرئيسية لبدء العميل
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
@@ -214,7 +243,7 @@ class NameInputFrame extends JFrame {
         try {
             // الاتصال بالسيرفر
             Socket socket = new Socket("localhost", 3280);
-            ShClient1 client = new ShClient1(socket, playerName);
+            ShClient client = new ShClient(socket, playerName);
             client.setVisible(true);
             this.dispose(); // إغلاق نافذة إدخال الاسم
         } catch (IOException e) {
