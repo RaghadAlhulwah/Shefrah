@@ -3,41 +3,39 @@ import java.awt.*;
 import java.io.*;
 import java.net.*;
 
-public class ShClient extends JFrame {
-    private JTextArea connectedPlayers; // منطقة نصية لعرض اللاعبين المتصلين
-    private JButton playButton; // زر لتحديد أن اللاعب جاهز
-    private Socket socket; // سوكيت للاتصال بالسيرفر
-    private PrintWriter out; // لإرسال الرسائل إلى السيرفر
-    private BufferedReader in; // لقراءة الرسائل من السيرفر
-    private String playerName; // اسم اللاعب
+public class ShClient1 extends JFrame {
+    private JTextArea connectedPlayers; 
+    private JButton playButton; 
+    private Socket socket; 
+    private PrintWriter out; 
+    private BufferedReader in; 
+    private String playerName;
 
-    public ShClient(Socket clientSocket, String playerName) throws IOException {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(NameInputFrame::new);
+    }
+
+    public ShClient1(Socket clientSocket, String playerName) throws IOException {
         this.socket = clientSocket;
         this.playerName = playerName;
 
-        // تهيئة قنوات الإدخال والإخراج
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
-        // إعداد النافذة الرئيسية
         setTitle("شفرة");
         setSize(600, 400);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // عنوان النافذة
         JLabel title = new JLabel("اللاعبون المنتظرون", SwingConstants.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 24));
 
-        // منطقة نصية لعرض اللاعبين المتصلين
         connectedPlayers = new JTextArea(20, 50);
         connectedPlayers.setEditable(false);
 
-        // زر "جاهز"
         playButton = new JButton("جاهز");
 
-        // إضافة المكونات إلى النافذة
         add(title, BorderLayout.NORTH);
         add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
 
@@ -45,61 +43,51 @@ public class ShClient extends JFrame {
         buttonPanel.add(playButton);
         add(buttonPanel, BorderLayout.SOUTH);
 
-        // إرسال اسم اللاعب إلى السيرفر
         out.println(playerName);
 
-        // إضافة مستمع لزر "جاهز"
         playButton.addActionListener(e -> {
-            out.println("play"); // إعلام السيرفر أن اللاعب جاهز
-            openReadyPlayersFrame(); // فتح نافذة "اللاعبون الجاهزون"
+            out.println("play");
+            openReadyPlayersFrame();
         });
 
-        // بدء ثيل للاستماع لرسائل السيرفر
         new Thread(this::readServerMessages).start();
     }
 
-    // الاستماع لرسائل السيرفر
     private void readServerMessages() {
         try {
             String serverMessage;
             while ((serverMessage = in.readLine()) != null) {
                 System.out.println("السيرفر: " + serverMessage);
                 if (serverMessage.startsWith("Players:")) {
-                    // تحديث قائمة اللاعبين المتصلين
                     String playersList = serverMessage.substring(8);
                     updateConnectedPlayers(playersList.split(","));
                 } else if (serverMessage.startsWith("WaitingPlayers:")) {
-                    // تحديث قائمة اللاعبين المنتظرين
                     String waitingList = serverMessage.substring(15);
                     updateWaitingPlayers(waitingList.split(","));
                 } else if (serverMessage.startsWith("Timer:")) {
-                    // تحديث المؤقت
                     int timeLeft = Integer.parseInt(serverMessage.substring(6));
                     updateTimer(timeLeft);
                 } else if (serverMessage.equals("GameStart")) {
-                    // فتح نافذة "بدء اللعبة"
                     openGameStartFrame();
-                }
-                else if (serverMessage.equals("ClosePreviousFrames")) {
+                } else if (serverMessage.equals("ClosePreviousFrames")) {
                     closePreviousFrames();
-}
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    
-    private void closePreviousFrames() {
-    SwingUtilities.invokeLater(() -> {
-        for (Window window : Window.getWindows()) {
-            if (window instanceof ReadyPlayersFrame) {
-                window.dispose();
-            }
-        }
-    });
-}
 
-    // تحديث قائمة اللاعبين المتصلين في الواجهة
+    private void closePreviousFrames() {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    window.dispose();
+                }
+            }
+        });
+    }
+
     private void updateConnectedPlayers(String[] players) {
         SwingUtilities.invokeLater(() -> {
             connectedPlayers.setText("");
@@ -111,7 +99,6 @@ public class ShClient extends JFrame {
         });
     }
 
-    // تحديث قائمة اللاعبين المنتظرين في الواجهة
     private void updateWaitingPlayers(String[] players) {
         SwingUtilities.invokeLater(() -> {
             for (Window window : Window.getWindows()) {
@@ -123,7 +110,6 @@ public class ShClient extends JFrame {
         });
     }
 
-    // تحديث المؤقت في الواجهة
     private void updateTimer(int timeLeft) {
         SwingUtilities.invokeLater(() -> {
             for (Window window : Window.getWindows()) {
@@ -135,166 +121,142 @@ public class ShClient extends JFrame {
         });
     }
 
-    // فتح نافذة "اللاعبون الجاهزون"
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
             ReadyPlayersFrame readyPlayersFrame = new ReadyPlayersFrame(playerName);
             readyPlayersFrame.setVisible(true);
-            this.setVisible(false); // إخفاء النافذة الحالية
+            this.setVisible(false);
         });
         this.dispose();
     }
 
-    // فتح نافذة "بدء اللعبة" مع عرض صورة
+    private void openGameStartFrame() {
+        SwingUtilities.invokeLater(GameStartFrame::new);
+    }
 
-private void openGameStartFrame() {
-    SwingUtilities.invokeLater(() -> {
-        JFrame gameStartFrame = new JFrame("بدء اللعبة");
-        gameStartFrame.setSize(600, 600);
-        gameStartFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        gameStartFrame.setLocationRelativeTo(null);
-        gameStartFrame.setLayout(new BorderLayout());
+    // الفئة الخاصة بإدخال الاسم
+    static class NameInputFrame extends JFrame {
+        private JTextField nameField; 
+        private JButton okButton;
 
-        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        public NameInputFrame() {
+            setTitle("ادخل اسمك");
+            setSize(300, 150);
+            setLayout(new BorderLayout());
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
 
-        try {
-            // تحميل الصورة وضبط حجمها
-            ImageIcon originalImage = new ImageIcon(getClass().getResource("/shefrah2/imgSh.png"));
-            Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
-            ImageIcon resizedIcon = new ImageIcon(scaledImage);
-            JLabel displayField = new JLabel(resizedIcon);
-            imagePanel.add(displayField);
-        } catch (Exception e) {
-            System.out.println("Image cannot be found!");
-            JLabel errorMessage = new JLabel("الصورة غير موجودة!", SwingConstants.CENTER);
-            imagePanel.add(errorMessage);
+            JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
+            nameField = new JTextField(15);
+
+            okButton = new JButton("موافق");
+            okButton.addActionListener(e -> submitName());
+
+            JPanel inputPanel = new JPanel();
+            inputPanel.add(nameField);
+
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.add(okButton);
+
+            add(prompt, BorderLayout.NORTH);
+            add(inputPanel, BorderLayout.CENTER);
+            add(buttonPanel, BorderLayout.SOUTH);
+
+            setVisible(true);
         }
 
-        // إنشاء حقل إدخال النص وزر الإرسال
-        JTextField textField = new JTextField(20);
-        JButton submitButton = new JButton("إرسال");
-
-        submitButton.addActionListener(e -> {
-            String userInput = textField.getText();
-            System.out.println("تم إدخال: " + userInput);
-            JOptionPane.showMessageDialog(gameStartFrame, "لقد أدخلت: " + userInput);
-        });
-
-        inputPanel.add(textField);
-        inputPanel.add(submitButton);
-
-        // إضافة اللوحات إلى النافذة
-        gameStartFrame.add(imagePanel, BorderLayout.CENTER);
-        gameStartFrame.add(inputPanel, BorderLayout.SOUTH);
-
-        gameStartFrame.setVisible(true);
-        this.dispose(); // إغلاق النافذة الحالية
-    });
-}
-    // الدالة الرئيسية لبدء العميل
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(NameInputFrame::new);
-    }
-}
-
-// نافذة لإدخال اسم اللاعب
-class NameInputFrame extends JFrame {
-    private JTextField nameField; // حقل نصي لإدخال اسم اللاعب
-    private JButton okButton; // زر لتأكيد الاسم
-
-    public NameInputFrame() {
-        setTitle("ادخل اسمك");
-        setSize(300, 150);
-        setLayout(new BorderLayout());
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-
-        // نص الإرشاد
-        JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
-        nameField = new JTextField(15);
-
-        // زر "موافق"
-        okButton = new JButton("موافق");
-        okButton.addActionListener(e -> submitName());
-
-        // إضافة المكونات إلى النافذة
-        JPanel inputPanel = new JPanel();
-        inputPanel.add(nameField);
-
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(okButton);
-
-        add(prompt, BorderLayout.NORTH);
-        add(inputPanel, BorderLayout.CENTER);
-        add(buttonPanel, BorderLayout.SOUTH);
-
-        setVisible(true);
-    }
-
-    // إرسال اسم اللاعب والاتصال بالسيرفر
-    private void submitName() {
-        String playerName = nameField.getText().trim();
-        if (playerName.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "يرجى إدخال اسم", "خطأ", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            // الاتصال بالسيرفر
-            Socket socket = new Socket("localhost", 3280);
-            ShClient client = new ShClient(socket, playerName);
-            client.setVisible(true);
-            this.dispose(); // إغلاق نافذة إدخال الاسم
-        } catch (IOException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-}
-
-// نافذة لعرض اللاعبين الجاهزين والمؤقت
-class ReadyPlayersFrame extends JFrame {
-    private JTextArea readyPlayersArea; // منطقة نصية لعرض اللاعبين الجاهزين
-    private JLabel timerLabel; // نص لعرض المؤقت
-
-    public ReadyPlayersFrame(String playerName) {
-        setTitle("اللاعبون الجاهزون - " + playerName);
-        setSize(400, 300);
-        setLayout(new BorderLayout());
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-
-        // منطقة نصية للاعبين الجاهزين
-        readyPlayersArea = new JTextArea();
-        readyPlayersArea.setEditable(false);
-        readyPlayersArea.setText("اللاعبون الجاهزون:\n" + playerName);
-
-        // نص المؤقت
-        timerLabel = new JLabel("الوقت المتبقي: 30 ثانية", SwingConstants.CENTER);
-        timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
-
-        // إضافة المكونات إلى النافذة
-        add(new JScrollPane(readyPlayersArea), BorderLayout.CENTER);
-        add(timerLabel, BorderLayout.SOUTH);
-    }
-
-    // تحديث قائمة اللاعبين الجاهزين
-    public void updateReadyPlayers(String[] players) {
-        SwingUtilities.invokeLater(() -> {
-            readyPlayersArea.setText("اللاعبون الجاهزون:\n");
-            for (String player : players) {
-                if (player != null && !player.isEmpty()) {
-                    readyPlayersArea.append(player + "\n");
-                }
+        private void submitName() {
+            String playerName = nameField.getText().trim();
+            if (playerName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "يرجى إدخال اسم", "خطأ", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-        });
+
+            try {
+                Socket socket = new Socket("localhost", 3280);
+                ShClient1 client = new ShClient1(socket, playerName);
+                client.setVisible(true);
+                this.dispose();
+            } catch (IOException e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
-    // تحديث المؤقت
-    public void updateTimer(int timeLeft) {
-        SwingUtilities.invokeLater(() -> {
-            timerLabel.setText("الوقت المتبقي: " + timeLeft + " ثانية");
-        });
+    // الفئة الخاصة باللاعبين الجاهزين
+    static class ReadyPlayersFrame extends JFrame {
+        private JTextArea readyPlayersArea; 
+        private JLabel timerLabel;
+
+        public ReadyPlayersFrame(String playerName) {
+            setTitle("اللاعبون الجاهزون - " + playerName);
+            setSize(400, 300);
+            setLayout(new BorderLayout());
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+
+            readyPlayersArea = new JTextArea();
+            readyPlayersArea.setEditable(false);
+            readyPlayersArea.setText("اللاعبون الجاهزون:\n" + playerName);
+
+            timerLabel = new JLabel("الوقت المتبقي: 30 ثانية", SwingConstants.CENTER);
+            timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
+
+            add(new JScrollPane(readyPlayersArea), BorderLayout.CENTER);
+            add(timerLabel, BorderLayout.SOUTH);
+        }
+
+        public void updateReadyPlayers(String[] players) {
+            SwingUtilities.invokeLater(() -> {
+                readyPlayersArea.setText("اللاعبون الجاهزون:\n");
+                for (String player : players) {
+                    if (player != null && !player.isEmpty()) {
+                        readyPlayersArea.append(player + "\n");
+                    }
+                }
+            });
+        }
+
+        public void updateTimer(int timeLeft) {
+            SwingUtilities.invokeLater(() -> {
+                timerLabel.setText("الوقت المتبقي: " + timeLeft + " ثانية");
+            });
+        }
+    }
+
+    // الفئة الخاصة ببدء اللعبة
+    static class GameStartFrame extends JFrame {
+        public GameStartFrame() {
+            setTitle("بدء اللعبة");
+            setSize(600, 600);
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+            setLayout(new BorderLayout());
+
+            JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+            try {
+                ImageIcon originalImage = new ImageIcon(getClass().getResource("/shefrah2/imgSh.png"));
+                Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
+                JLabel displayField = new JLabel(new ImageIcon(scaledImage));
+                imagePanel.add(displayField);
+            } catch (Exception e) {
+                imagePanel.add(new JLabel("الصورة غير موجودة!", SwingConstants.CENTER));
+            }
+
+            JTextField textField = new JTextField(20);
+            JButton submitButton = new JButton("إرسال");
+
+            submitButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "لقد أدخلت: " + textField.getText()));
+
+            inputPanel.add(textField);
+            inputPanel.add(submitButton);
+
+            add(imagePanel, BorderLayout.CENTER);
+            add(inputPanel, BorderLayout.SOUTH);
+            setVisible(true);
+        }
     }
 }
