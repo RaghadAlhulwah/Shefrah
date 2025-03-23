@@ -1,21 +1,37 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
+import java.util.List;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private JTextArea connectedPlayers; 
     private JButton playButton; 
     private Socket socket; 
     private PrintWriter out; 
     private BufferedReader in; 
     private String playerName;
-
+    private static final List<String> picName = Arrays.asList(
+       "pic1", "pic2", "pic3", "pic4", "pic5", 
+        "pic6", "pic7", "pic8", "pic9",
+        "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
+    );
+    
+     private static final List<String> picPath = Arrays.asList(
+           "/shefrah2/imgSh.png","/shefrah2/imgSh2.png","/shefrah2/imgSh3.png",
+             "/shefrah2/imgSh4.png", "/shefrah2/imgSh5.png","/shefrah2/imgSh6.png",
+             "/shefrah2/imgSh7.png","/shefrah2/imgSh8.png", "/shefrah2/imgSh9.png",
+             "/shefrah2/imgSh10.png","/shefrah2/imgSh11.png","/shefrah2/imgSh12.png",
+             "/shefrah2/imgSh13.png","/shefrah2/imgSh14.png","/shefrah2/imgSh15.png"
+    );
+     
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
     }
 
-    public ShClient1(Socket clientSocket, String playerName) throws IOException {
+    public ShClient(Socket clientSocket, String playerName) throws IOException {
         this.socket = clientSocket;
         this.playerName = playerName;
 
@@ -130,9 +146,10 @@ public class ShClient1 extends JFrame {
         this.dispose();
     }
 
-    private void openGameStartFrame() {
-        SwingUtilities.invokeLater(GameStartFrame::new);
-    }
+private void openGameStartFrame() {
+    SwingUtilities.invokeLater(() -> new GameStartFrame(socket));
+}
+
 
     // الفئة الخاصة بإدخال الاسم
     static class NameInputFrame extends JFrame {
@@ -174,7 +191,7 @@ public class ShClient1 extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                ShClient1 client = new ShClient1(socket, playerName);
+                ShClient client = new ShClient(socket, playerName);
                 client.setVisible(true);
                 this.dispose();
             } catch (IOException e) {
@@ -223,40 +240,128 @@ public class ShClient1 extends JFrame {
                 timerLabel.setText("الوقت المتبقي: " + timeLeft + " ثانية");
             });
         }
+        
     }
 
     // الفئة الخاصة ببدء اللعبة
-    static class GameStartFrame extends JFrame {
-        public GameStartFrame() {
-            setTitle("بدء اللعبة");
-            setSize(600, 600);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
+    public class GameStartFrame extends JFrame {
+    private JLabel displayField;
+    private JTextField textField;
+    private JButton submitButton;
+    private Socket socket;
+    private BufferedReader in;
+    private PrintWriter out;
+    private int score = 0;
+    private int round = 0;
+    private final int MAX_ROUNDS = 15;
 
-            JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-            JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+    public GameStartFrame(Socket socket) {
+        this.socket = socket;
+        setTitle("بدء اللعبة");
+        setSize(600, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
-            try {
-                ImageIcon originalImage = new ImageIcon(getClass().getResource("/shefrah2/imgSh.png"));
-                Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
-                JLabel displayField = new JLabel(new ImageIcon(scaledImage));
-                imagePanel.add(displayField);
-            } catch (Exception e) {
-                imagePanel.add(new JLabel("الصورة غير موجودة!", SwingConstants.CENTER));
-            }
+        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
 
-            JTextField textField = new JTextField(20);
-            JButton submitButton = new JButton("إرسال");
+        displayField = new JLabel();
+        imagePanel.add(displayField);
 
-            submitButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "لقد أدخلت: " + textField.getText()));
+        textField = new JTextField(20);
+        submitButton = new JButton("إرسال");
 
-            inputPanel.add(textField);
-            inputPanel.add(submitButton);
+        inputPanel.add(textField);
+        inputPanel.add(submitButton);
 
-            add(imagePanel, BorderLayout.CENTER);
-            add(inputPanel, BorderLayout.SOUTH);
-            setVisible(true);
+        add(imagePanel, BorderLayout.CENTER);
+        add(inputPanel, BorderLayout.SOUTH);
+
+        setupConnection();
+
+        submitButton.addActionListener(this::sendAnswer);
+        setVisible(true);
+    }
+
+    private void setupConnection() {
+    try {
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(socket.getOutputStream(), true);
+
+        new Thread(this::listenForServerMessages).start();
+    } catch (IOException e) {
+        JOptionPane.showMessageDialog(this, "فشل الاتصال بالخادم!", "خطأ", JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
+    }
+}
+
+private void listenForServerMessages() {
+    try {
+        String message;
+        while ((message = in.readLine()) != null) {
+            String finalMessage = message;
+            SwingUtilities.invokeLater(() -> {
+                if (finalMessage.startsWith("NextRound:")) {
+                    String imageName = finalMessage.substring(10); // Extract image name
+                    updateImage(imageName); // Update the image
+                } else if (finalMessage.equals("Correct")) {
+                    score++;
+                    round++;
+                    if (round > MAX_ROUNDS) {
+                        JOptionPane.showMessageDialog(this, "اللعبة انتهت! نقاطك: " + score);
+                        dispose();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "إجابة صحيحة! الانتقال إلى السؤال التالي.");
+                        textField.setText("");
+                    }
+                } else if (finalMessage.equals("Incorrect")) {
+                    JOptionPane.showMessageDialog(this, "إجابة خاطئة! حاول مرة أخرى.");
+                }
+            });
         }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+}
+
+private void updateImage(String imageName) {
+    SwingUtilities.invokeLater(() -> {
+        try {
+            int index = picName.indexOf(imageName); // Find the index of the image name
+            if (index == -1) {
+                displayField.setText("الصورة غير موجودة!");
+                return;
+            }
+            String path = picPath.get(index); // Get the corresponding image path
+            ImageIcon originalImage = new ImageIcon(getClass().getResource(path)); // Load the image
+            if (originalImage.getIconWidth() == -1) {
+                displayField.setText("الصورة غير موجودة!");
+            } else {
+                Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
+                displayField.setIcon(new ImageIcon(scaledImage)); // Display the image
+            }
+        } catch (Exception e) {
+            displayField.setText("خطأ في تحميل الصورة!");
+        }
+    });
+}
+
+/*private void sendAnswer(ActionEvent e) {
+    String answer = textField.getText().trim();
+    if (!answer.isEmpty()) {
+        out.println("answer:" + answer); // Send the answer to the server
+    }
+}*/
+
+private void sendAnswer(ActionEvent e) {
+    String answer = textField.getText().trim();
+    if (!answer.isEmpty()) {
+        out.println("answer:" + answer); // Send the answer to the server
+        System.out.println("Sent answer to server: " + answer); // Debug statement
+    } else {
+        System.out.println("Answer is empty!"); // Debug statement
+    }
+}
     }
 }
