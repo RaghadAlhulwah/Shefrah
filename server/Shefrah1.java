@@ -8,7 +8,19 @@ public class Shefrah2 {
     private static int countdown = 30;
     private static boolean timerRunning = false;
     private static Timer gameTimer;
+    private static final Map<String, Integer> playerScores = new HashMap<>();
+    private static final List<String> equations = Arrays.asList(
+       "pic1", "pic2", "pic3", "pic4", "pic5", 
+        "pic6", "pic7", "pic8", "pic9",
+        "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
+    );
+    
+     private static final List<Integer> answers = Arrays.asList(
+        25, 15, 30, 40, 35, 5, 45, 50, 20, 10, 65, 55, 30, 25, 10
+    );
+        private static int currentRound = 0;
 
+        
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
         System.out.println("Server started...");
@@ -68,6 +80,31 @@ public class Shefrah2 {
                 removePlayer();
             }
         }
+
+         private void handleAnswer(String answer) {
+    try {
+        int playerAnswer = Integer.parseInt(answer);
+        int correctAnswer = answers.get(currentRound);
+        if (playerAnswer == correctAnswer) {
+            // Correct answer, increase score
+            playerScores.put(playerName, playerScores.getOrDefault(playerName, 0) + 1);
+            out.println("Correct! Your score: " + playerScores.get(playerName));
+
+            // Move to the next round
+            currentRound++;
+            if (currentRound < equations.size()) {
+                out.println("NextRound:" + equations.get(currentRound)); // Send next round image name
+            } else {
+                out.println("Game over! Your final score: " + playerScores.get(playerName));
+                endGame();
+            }
+        } else {
+            out.println("Incorrect! Try again.");
+        }
+    } catch (Exception e) {
+        out.println("Error: Invalid answer format.");
+    }
+}
 
         private void removePlayer() {
             synchronized (waitingRoom) {
@@ -159,6 +196,9 @@ public class Shefrah2 {
 
     private static void closePreviousFrames() {
         broadcastMessage("ClosePreviousFrames");
+    }
+    private static void endGame() {
+        broadcastMessage("GameEnd");
     }
 }
 
