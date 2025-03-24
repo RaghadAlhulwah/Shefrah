@@ -4,7 +4,9 @@ import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ShClient extends JFrame {
     private JTextArea connectedPlayers; 
@@ -13,19 +15,26 @@ public class ShClient extends JFrame {
     private PrintWriter out; 
     private BufferedReader in; 
     private String playerName;
-    private static final List<String> picName = Arrays.asList(
-       "pic1", "pic2", "pic3", "pic4", "pic5", 
-        "pic6", "pic7", "pic8", "pic9",
-        "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
-    );
-    
-     private static final List<String> picPath = Arrays.asList(
-           "/shefrah2/imgSh.png","/shefrah2/imgSh2.png","/shefrah2/imgSh3.png",
-             "/shefrah2/imgSh4.png", "/shefrah2/imgSh5.png","/shefrah2/imgSh6.png",
-             "/shefrah2/imgSh7.png","/shefrah2/imgSh8.png", "/shefrah2/imgSh9.png",
-             "/shefrah2/imgSh10.png","/shefrah2/imgSh11.png","/shefrah2/imgSh12.png",
-             "/shefrah2/imgSh13.png","/shefrah2/imgSh14.png","/shefrah2/imgSh15.png"
-    );
+    private String playerAnswer;
+     private static final Map<String, String> picMap = new HashMap<>();
+
+    private static void piconnect() {
+    picMap.put("pic1", "/shefrah2/imgSh.png");
+    picMap.put("pic2", "/shefrah2/imgSh2.png");
+    picMap.put("pic3", "/shefrah2/imgSh3.png");
+    picMap.put("pic4", "/shefrah2/imgSh4.png");
+    picMap.put("pic5", "/shefrah2/imgSh5.png");
+    picMap.put("pic6", "/shefrah2/imgSh6.png");
+    picMap.put("pic7", "/shefrah2/imgSh7.png");
+    picMap.put("pic8", "/shefrah2/imgSh8.png");
+    picMap.put("pic9", "/shefrah2/imgSh9.png");
+    picMap.put("pic10", "/shefrah2/imgSh10.png");
+    picMap.put("pic11", "/shefrah2/imgSh11.png");
+    picMap.put("pic12", "/shefrah2/imgSh12.png");
+    picMap.put("pic13", "/shefrah2/imgSh13.png");
+    picMap.put("pic14", "/shefrah2/imgSh14.png");
+    picMap.put("pic15", "/shefrah2/imgSh15.png");
+}
      
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
@@ -157,7 +166,7 @@ private void openGameStartFrame() {
         private JButton okButton;
 
         public NameInputFrame() {
-            setTitle("ادخل اسمك");
+            setTitle("شفرة");
             setSize(300, 150);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -257,7 +266,7 @@ private void openGameStartFrame() {
 
     public GameStartFrame(Socket socket) {
         this.socket = socket;
-        setTitle("بدء اللعبة");
+        setTitle(" شفرة");
         setSize(600, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -271,7 +280,15 @@ private void openGameStartFrame() {
 
         textField = new JTextField(20);
         submitButton = new JButton("إرسال");
+       
+        submitButton.addActionListener(e -> {
+            String playerAnswer = textField.getText();
+            
+      
 
+        });
+        
+        
         inputPanel.add(textField);
         inputPanel.add(submitButton);
 
@@ -328,18 +345,17 @@ private void listenForServerMessages() {
 private void updateImage(String imageName) {
     SwingUtilities.invokeLater(() -> {
         try {
-            int index = picName.indexOf(imageName); // Find the index of the image name
-            if (index == -1) {
+            String path = picMap.get(imageName); // الحصول على مسار الصورة من الخريطة
+            if (path == null) {
                 displayField.setText("الصورة غير موجودة!");
                 return;
             }
-            String path = picPath.get(index); // Get the corresponding image path
-            ImageIcon originalImage = new ImageIcon(getClass().getResource(path)); // Load the image
+            ImageIcon originalImage = new ImageIcon(getClass().getResource(path)); // تحميل الصورة
             if (originalImage.getIconWidth() == -1) {
                 displayField.setText("الصورة غير موجودة!");
             } else {
                 Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
-                displayField.setIcon(new ImageIcon(scaledImage)); // Display the image
+                displayField.setIcon(new ImageIcon(scaledImage)); // عرض الصورة
             }
         } catch (Exception e) {
             displayField.setText("خطأ في تحميل الصورة!");
