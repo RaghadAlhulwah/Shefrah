@@ -9,7 +9,7 @@ public class Shefrah2 {
     private static boolean timerRunning = false;
     private static Timer gameTimer;
     private static final Map<String, Integer> playerScores = new HashMap<>();
-    private static final List<String> equations = Arrays.asList(
+    private static final List<String> picName = Arrays.asList(
        "pic1", "pic2", "pic3", "pic4", "pic5", 
         "pic6", "pic7", "pic8", "pic9",
         "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
@@ -49,37 +49,40 @@ public class Shefrah2 {
         }
 
         @Override
-        public void run() {
-            try {
-                playerName = in.readLine();
-                if (playerName == null || playerName.trim().isEmpty()) {
-                    out.println("Error: Invalid name");
-                    socket.close();
-                    return;
-                }
-                System.out.println("Player joined: " + playerName);
-                sendPlayersList();
-                broadcastWaitingPlayers();
+    public void run() {
+    try {
+        playerName = in.readLine();
+        if (playerName == null || playerName.trim().isEmpty()) {
+            out.println("Error: Invalid name");
+            socket.close();
+            return;
+        }
+        System.out.println("Player joined: " + playerName);
+        sendPlayersList();
+        broadcastWaitingPlayers();
 
-                String message;
-                while ((message = in.readLine()) != null) {
-                    if (message.equals("play")) {
-                        synchronized (waitingPlayers) {
-                            if (!waitingPlayers.contains(playerName)) {
-                                waitingPlayers.add(playerName);
-                            }
-                        }
-                        broadcastWaitingPlayers();
-                        startCountdownIfNeeded();
-                        checkAndStartGame();
+        String message;
+        while ((message = in.readLine()) != null) {
+            if (message.equals("play")) {
+                synchronized (waitingPlayers) {
+                    if (!waitingPlayers.contains(playerName)) {
+                        waitingPlayers.add(playerName);
                     }
                 }
-            } catch (IOException e) {
-                System.out.println("Player " + playerName + " disconnected.");
-            } finally {
-                removePlayer();
+                broadcastWaitingPlayers();
+                startCountdownIfNeeded();
+                checkAndStartGame();
+            } else if (message.startsWith("answer:")) {
+                String answer = message.substring(7); // استخراج الإجابة بعد "answer:"
+                handleAnswer(answer); // التحقق من الإجابة
             }
         }
+    } catch (IOException e) {
+        System.out.println("Player " + playerName + " disconnected.");
+    } finally {
+        removePlayer();
+    }
+}
 
          private void handleAnswer(String answer) {
     try {
@@ -92,8 +95,8 @@ public class Shefrah2 {
 
             // Move to the next round
             currentRound++;
-            if (currentRound < equations.size()) {
-                out.println("NextRound:" + equations.get(currentRound)); // Send next round image name
+            if (currentRound < picName.size()) {
+                out.println("NextRound:" + picName.get(currentRound)); // Send next round image name
             } else {
                 out.println("Game over! Your final score: " + playerScores.get(playerName));
                 endGame();
@@ -201,4 +204,5 @@ public class Shefrah2 {
         broadcastMessage("GameEnd");
     }
 }
+
 
