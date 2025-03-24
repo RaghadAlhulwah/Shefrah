@@ -3,167 +3,37 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ShClient extends JFrame {
-    private JTextArea connectedPlayers; 
-    private JButton playButton; 
-    private Socket socket; 
-    private PrintWriter out; 
-    private BufferedReader in; 
-    private String playerName;
-    private String playerAnswer;
-     private static final Map<String, String> picMap = new HashMap<>();
+    private static final Map<String, String> picMap = new HashMap<>();
 
-    private static void piconnect() {
-    picMap.put("pic1", "/shefrah2/imgSh.png");
-    picMap.put("pic2", "/shefrah2/imgSh2.png");
-    picMap.put("pic3", "/shefrah2/imgSh3.png");
-    picMap.put("pic4", "/shefrah2/imgSh4.png");
-    picMap.put("pic5", "/shefrah2/imgSh5.png");
-    picMap.put("pic6", "/shefrah2/imgSh6.png");
-    picMap.put("pic7", "/shefrah2/imgSh7.png");
-    picMap.put("pic8", "/shefrah2/imgSh8.png");
-    picMap.put("pic9", "/shefrah2/imgSh9.png");
-    picMap.put("pic10", "/shefrah2/imgSh10.png");
-    picMap.put("pic11", "/shefrah2/imgSh11.png");
-    picMap.put("pic12", "/shefrah2/imgSh12.png");
-    picMap.put("pic13", "/shefrah2/imgSh13.png");
-    picMap.put("pic14", "/shefrah2/imgSh14.png");
-    picMap.put("pic15", "/shefrah2/imgSh15.png");
-}
-     
+    static {
+        picMap.put("pic1", "/shefrah2/imgSh.png");
+        picMap.put("pic2", "/shefrah2/imgSh2.png");
+        picMap.put("pic3", "/shefrah2/imgSh3.png");
+        picMap.put("pic4", "/shefrah2/imgSh4.png");
+        picMap.put("pic5", "/shefrah2/imgSh5.png");
+        picMap.put("pic6", "/shefrah2/imgSh6.png");
+        picMap.put("pic7", "/shefrah2/imgSh7.png");
+        picMap.put("pic8", "/shefrah2/imgSh8.png");
+        picMap.put("pic9", "/shefrah2/imgSh9.png");
+        picMap.put("pic10", "/shefrah2/imgSh10.png");
+        picMap.put("pic11", "/shefrah2/imgSh11.png");
+        picMap.put("pic12", "/shefrah2/imgSh12.png");
+        picMap.put("pic13", "/shefrah2/imgSh13.png");
+        picMap.put("pic14", "/shefrah2/imgSh14.png");
+        picMap.put("pic15", "/shefrah2/imgSh15.png");
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
     }
 
-    public ShClient(Socket clientSocket, String playerName) throws IOException {
-        this.socket = clientSocket;
-        this.playerName = playerName;
-
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        out = new PrintWriter(socket.getOutputStream(), true);
-
-        setTitle("شفرة");
-        setSize(600, 400);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
-
-        JLabel title = new JLabel("اللاعبون المنتظرون", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 24));
-
-        connectedPlayers = new JTextArea(20, 50);
-        connectedPlayers.setEditable(false);
-
-        playButton = new JButton("جاهز");
-
-        add(title, BorderLayout.NORTH);
-        add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
-
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(playButton);
-        add(buttonPanel, BorderLayout.SOUTH);
-
-        out.println(playerName);
-
-        playButton.addActionListener(e -> {
-            out.println("play");
-            openReadyPlayersFrame();
-        });
-
-        new Thread(this::readServerMessages).start();
-    }
-
-    private void readServerMessages() {
-        try {
-            String serverMessage;
-            while ((serverMessage = in.readLine()) != null) {
-                System.out.println("السيرفر: " + serverMessage);
-                if (serverMessage.startsWith("Players:")) {
-                    String playersList = serverMessage.substring(8);
-                    updateConnectedPlayers(playersList.split(","));
-                } else if (serverMessage.startsWith("WaitingPlayers:")) {
-                    String waitingList = serverMessage.substring(15);
-                    updateWaitingPlayers(waitingList.split(","));
-                } else if (serverMessage.startsWith("Timer:")) {
-                    int timeLeft = Integer.parseInt(serverMessage.substring(6));
-                    updateTimer(timeLeft);
-                } else if (serverMessage.equals("GameStart")) {
-                    openGameStartFrame();
-                } else if (serverMessage.equals("ClosePreviousFrames")) {
-                    closePreviousFrames();
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void closePreviousFrames() {
-        SwingUtilities.invokeLater(() -> {
-            for (Window window : Window.getWindows()) {
-                if (window instanceof ReadyPlayersFrame) {
-                    window.dispose();
-                }
-            }
-        });
-    }
-
-    private void updateConnectedPlayers(String[] players) {
-        SwingUtilities.invokeLater(() -> {
-            connectedPlayers.setText("");
-            for (String player : players) {
-                if (player != null && !player.isEmpty()) {
-                    connectedPlayers.append(player + "\n");
-                }
-            }
-        });
-    }
-
-    private void updateWaitingPlayers(String[] players) {
-        SwingUtilities.invokeLater(() -> {
-            for (Window window : Window.getWindows()) {
-                if (window instanceof ReadyPlayersFrame) {
-                    ReadyPlayersFrame readyPlayersFrame = (ReadyPlayersFrame) window;
-                    readyPlayersFrame.updateReadyPlayers(players);
-                }
-            }
-        });
-    }
-
-    private void updateTimer(int timeLeft) {
-        SwingUtilities.invokeLater(() -> {
-            for (Window window : Window.getWindows()) {
-                if (window instanceof ReadyPlayersFrame) {
-                    ReadyPlayersFrame readyPlayersFrame = (ReadyPlayersFrame) window;
-                    readyPlayersFrame.updateTimer(timeLeft);
-                }
-            }
-        });
-    }
-
-    private void openReadyPlayersFrame() {
-        SwingUtilities.invokeLater(() -> {
-            ReadyPlayersFrame readyPlayersFrame = new ReadyPlayersFrame(playerName);
-            readyPlayersFrame.setVisible(true);
-            this.setVisible(false);
-        });
-        this.dispose();
-    }
-
-private void openGameStartFrame() {
-    SwingUtilities.invokeLater(() -> new GameStartFrame(socket));
-}
-
-
-    // الفئة الخاصة بإدخال الاسم
+    // Name Input Frame
     static class NameInputFrame extends JFrame {
-        private JTextField nameField; 
-        private JButton okButton;
+        private JTextField nameField;
+        private JButton submitButton;
 
         public NameInputFrame() {
             setTitle("شفرة");
@@ -175,14 +45,14 @@ private void openGameStartFrame() {
             JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
             nameField = new JTextField(15);
 
-            okButton = new JButton("موافق");
-            okButton.addActionListener(e -> submitName());
+            submitButton = new JButton("انضم");
+            submitButton.addActionListener(e -> submitName());
 
             JPanel inputPanel = new JPanel();
             inputPanel.add(nameField);
 
             JPanel buttonPanel = new JPanel();
-            buttonPanel.add(okButton);
+            buttonPanel.add(submitButton);
 
             add(prompt, BorderLayout.NORTH);
             add(inputPanel, BorderLayout.CENTER);
@@ -200,19 +70,151 @@ private void openGameStartFrame() {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                ShClient client = new ShClient(socket, playerName);
-                client.setVisible(true);
+                new ShClient(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
-                e.printStackTrace();
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    // الفئة الخاصة باللاعبين الجاهزين
+    // Client Main Class
+    private Socket socket;
+    private PrintWriter out;
+    private BufferedReader in;
+    private String playerName;
+
+    public ShClient(Socket socket, String playerName) throws IOException {
+        this.socket = socket;
+        this.playerName = playerName;
+
+        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        out = new PrintWriter(socket.getOutputStream(), true);
+
+        setTitle("شفرة - " + playerName);
+        setSize(600, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 24));
+
+        JTextArea connectedPlayers = new JTextArea(20, 50);
+        connectedPlayers.setEditable(false);
+
+        JButton playButton = new JButton("جاهز");
+
+        add(title, BorderLayout.NORTH);
+        add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(playButton);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        out.println(playerName);
+
+        playButton.addActionListener(e -> {
+            out.println("play");
+            openReadyPlayersFrame();
+        });
+
+        new Thread(() -> readServerMessages(connectedPlayers)).start();
+    }
+
+    private void readServerMessages(JTextArea connectedPlayers) {
+        try {
+            String serverMessage;
+            while ((serverMessage = in.readLine()) != null) {
+                System.out.println("Server: " + serverMessage);
+                if (serverMessage.startsWith("Players:")) {
+                    updateConnectedPlayers(connectedPlayers, serverMessage.substring(8).split(","));
+                } else if (serverMessage.startsWith("WaitingPlayers:")) {
+                    updateWaitingPlayers(serverMessage.substring(15).split(","));
+                } else if (serverMessage.startsWith("Timer:")) {
+                    updateTimer(Integer.parseInt(serverMessage.substring(6)));
+                } else if (serverMessage.startsWith("GameStart:")) {
+                    openGameStartFrame(serverMessage.substring(10));
+                } else if (serverMessage.startsWith("ScoreUpdate:")) {
+                    String[] parts = serverMessage.substring(12).split(":");
+                    String player = parts[0];
+                    int score = Integer.parseInt(parts[1]);
+                    if (player.equals(playerName)) {
+                        updateScore(score);
+                    }
+                } else if (serverMessage.equals("GameOver")) {
+                    JOptionPane.showMessageDialog(this, "اللعبة انتهت!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                    System.exit(0);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateConnectedPlayers(JTextArea connectedPlayers, String[] players) {
+        SwingUtilities.invokeLater(() -> {
+            connectedPlayers.setText("");
+            for (String player : players) {
+                if (!player.isEmpty()) {
+                    connectedPlayers.append(player + "\n");
+                }
+            }
+        });
+    }
+
+    private void updateWaitingPlayers(String[] players) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    ((ReadyPlayersFrame) window).updateReadyPlayers(players);
+                }
+            }
+        });
+    }
+
+    private void updateTimer(int timeLeft) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    ((ReadyPlayersFrame) window).updateTimer(timeLeft);
+                }
+            }
+        });
+    }
+
+    private void updateScore(int score) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof GameStartFrame) {
+                    ((GameStartFrame) window).updateScore(score);
+                }
+            }
+        });
+    }
+
+    private void openReadyPlayersFrame() {
+        SwingUtilities.invokeLater(() -> {
+            ReadyPlayersFrame readyPlayersFrame = new ReadyPlayersFrame(playerName);
+            readyPlayersFrame.setVisible(true);
+            this.setVisible(false);
+        });
+    }
+
+    private void openGameStartFrame(String imageName) {
+        SwingUtilities.invokeLater(() -> {
+            new GameStartFrame(socket, imageName, playerName).setVisible(true);
+            for (Window window : Window.getWindows()) {
+                if (window instanceof ReadyPlayersFrame) {
+                    window.dispose();
+                }
+            }
+        });
+    }
+
+    // Ready Players Frame
     static class ReadyPlayersFrame extends JFrame {
-        private JTextArea readyPlayersArea; 
+        private JTextArea readyPlayersArea;
         private JLabel timerLabel;
 
         public ReadyPlayersFrame(String playerName) {
@@ -224,7 +226,6 @@ private void openGameStartFrame() {
 
             readyPlayersArea = new JTextArea();
             readyPlayersArea.setEditable(false);
-            readyPlayersArea.setText("اللاعبون الجاهزون:\n" + playerName);
 
             timerLabel = new JLabel("الوقت المتبقي: 30 ثانية", SwingConstants.CENTER);
             timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
@@ -237,7 +238,7 @@ private void openGameStartFrame() {
             SwingUtilities.invokeLater(() -> {
                 readyPlayersArea.setText("اللاعبون الجاهزون:\n");
                 for (String player : players) {
-                    if (player != null && !player.isEmpty()) {
+                    if (!player.isEmpty()) {
                         readyPlayersArea.append(player + "\n");
                     }
                 }
@@ -249,135 +250,110 @@ private void openGameStartFrame() {
                 timerLabel.setText("الوقت المتبقي: " + timeLeft + " ثانية");
             });
         }
-        
     }
 
-    // الفئة الخاصة ببدء اللعبة
-    public class GameStartFrame extends JFrame {
+    // Game Start Frame
+   static class GameStartFrame extends JFrame {
     private JLabel displayField;
+    private JLabel scoreLabel;
     private JTextField textField;
     private JButton submitButton;
-    private Socket socket;
-    private BufferedReader in;
     private PrintWriter out;
+    private BufferedReader in;
+    private String playerName;
     private int score = 0;
-    private int round = 0;
-    private final int MAX_ROUNDS = 15;
 
-    public GameStartFrame(Socket socket) {
-        this.socket = socket;
-        setTitle(" شفرة");
+    public GameStartFrame(Socket socket, String imageName, String playerName) {
+        this.playerName = playerName;
+        setTitle("شفرة - بدء اللعبة");
         setSize(600, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        JPanel imagePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        JPanel inputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        // Score Label
+        scoreLabel = new JLabel("نقاطك: 0", SwingConstants.CENTER);
+        scoreLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        add(scoreLabel, BorderLayout.NORTH);
 
+        // Image Display
         displayField = new JLabel();
-        imagePanel.add(displayField);
+        updateImage(imageName);
+        add(displayField, BorderLayout.CENTER);
 
+        // Input Panel
+        JPanel inputPanel = new JPanel();
         textField = new JTextField(20);
         submitButton = new JButton("إرسال");
-       
-        submitButton.addActionListener(e -> {
-            String playerAnswer = textField.getText();
-            
-      
-
-        });
-        
-        
         inputPanel.add(textField);
         inputPanel.add(submitButton);
-
-        add(imagePanel, BorderLayout.CENTER);
         add(inputPanel, BorderLayout.SOUTH);
 
-        setupConnection();
-
-        submitButton.addActionListener(this::sendAnswer);
-        setVisible(true);
-    }
-
-    private void setupConnection() {
-    try {
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        out = new PrintWriter(socket.getOutputStream(), true);
-
-        new Thread(this::listenForServerMessages).start();
-    } catch (IOException e) {
-        JOptionPane.showMessageDialog(this, "فشل الاتصال بالخادم!", "خطأ", JOptionPane.ERROR_MESSAGE);
-        e.printStackTrace();
-    }
-}
-
-private void listenForServerMessages() {
-    try {
-        String message;
-        while ((message = in.readLine()) != null) {
-            String finalMessage = message;
-            SwingUtilities.invokeLater(() -> {
-                if (finalMessage.startsWith("NextRound:")) {
-                    String imageName = finalMessage.substring(10); // Extract image name
-                    updateImage(imageName); // Update the image
-                } else if (finalMessage.equals("Correct")) {
-                    score++;
-                    round++;
-                    if (round > MAX_ROUNDS) {
-                        JOptionPane.showMessageDialog(this, "اللعبة انتهت! نقاطك: " + score);
-                        dispose();
-                    } else {
-                        JOptionPane.showMessageDialog(this, "إجابة صحيحة! الانتقال إلى السؤال التالي.");
-                        textField.setText("");
-                    }
-                } else if (finalMessage.equals("Incorrect")) {
-                    JOptionPane.showMessageDialog(this, "إجابة خاطئة! حاول مرة أخرى.");
-                }
-            });
-        }
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
-}
-
-private void updateImage(String imageName) {
-    SwingUtilities.invokeLater(() -> {
+        // Set up socket communication
         try {
-            String path = picMap.get(imageName); // الحصول على مسار الصورة من الخريطة
-            if (path == null) {
-                displayField.setText("الصورة غير موجودة!");
-                return;
-            }
-            ImageIcon originalImage = new ImageIcon(getClass().getResource(path)); // تحميل الصورة
-            if (originalImage.getIconWidth() == -1) {
-                displayField.setText("الصورة غير موجودة!");
-            } else {
-                Image scaledImage = originalImage.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
-                displayField.setIcon(new ImageIcon(scaledImage)); // عرض الصورة
-            }
-        } catch (Exception e) {
-            displayField.setText("خطأ في تحميل الصورة!");
+            out = new PrintWriter(socket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-    });
-}
 
-/*private void sendAnswer(ActionEvent e) {
-    String answer = textField.getText().trim();
-    if (!answer.isEmpty()) {
-        out.println("answer:" + answer); // Send the answer to the server
-    }
-}*/
+        // Submit Button Action
+        submitButton.addActionListener(e -> {
+            String answer = textField.getText().trim();
+            if (!answer.isEmpty()) {
+                out.println("answer:" + answer);            
+            }
+            textField.setText("");
+        });
 
-private void sendAnswer(ActionEvent e) {
-    String answer = textField.getText().trim();
-    if (!answer.isEmpty()) {
-        out.println("answer:" + answer); // Send the answer to the server
-        System.out.println("Sent answer to server: " + answer); // Debug statement
-    } else {
-        System.out.println("Answer is empty!"); // Debug statement
+        // Start a thread to listen for server messages
+        new Thread(this::listenForServerMessages).start();
+    }
+
+    private void updateImage(String imageName) {
+        SwingUtilities.invokeLater(() -> {
+            String path = picMap.get(imageName);
+            if (path != null) {
+                ImageIcon icon = new ImageIcon(getClass().getResource(path));
+                Image scaledImage = icon.getImage().getScaledInstance(500, 500, Image.SCALE_SMOOTH);
+                displayField.setIcon(new ImageIcon(scaledImage));
+            } else {
+                displayField.setText("الصورة غير متوفرة!");
+            }
+        });
+    }
+
+    private void listenForServerMessages() {
+        try {
+            String serverMessage;
+            while ((serverMessage = in.readLine()) != null) {
+                System.out.println("Server: " + serverMessage);
+                if (serverMessage.startsWith("NextRound:")) {
+                    String nextImageName = serverMessage.substring(10);
+                    updateImage(nextImageName);
+                } else if (serverMessage.startsWith("ScoreUpdate:")) {
+                    String[] parts = serverMessage.substring(12).split(":");
+                    String player = parts[0];
+                    int newScore = Integer.parseInt(parts[1]);
+                    if (player.equals(playerName)) {
+                        updateScore(newScore); // Update the score
+                    }
+                } else if (serverMessage.equals("GameOver")) {
+                    JOptionPane.showMessageDialog(this, "اللعبة انتهت! نقاطك النهائية: " + score, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+                    System.exit(0);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Method to update the score label
+    private void updateScore(int newScore) {
+        SwingUtilities.invokeLater(() -> {
+            score = newScore;
+            scoreLabel.setText("نقاطك: " + score);
+        });
     }
 }
-    }
 }
