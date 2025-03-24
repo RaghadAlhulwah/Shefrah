@@ -10,17 +10,15 @@ public class Shefrah2 {
     private static Timer gameTimer;
     private static final Map<String, Integer> playerScores = new HashMap<>();
     private static final List<String> picName = Arrays.asList(
-       "pic1", "pic2", "pic3", "pic4", "pic5", 
+        "pic1", "pic2", "pic3", "pic4", "pic5", 
         "pic6", "pic7", "pic8", "pic9",
         "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
     );
-    
-     private static final List<Integer> answers = Arrays.asList(
+    private static final List<Integer> answers = Arrays.asList(
         25, 15, 30, 40, 35, 5, 45, 50, 20, 10, 65, 55, 30, 25, 10
     );
-        private static int currentRound = 0;
+    private static int currentRound = 0;
 
-        
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
         System.out.println("Server started...");
@@ -32,7 +30,7 @@ public class Shefrah2 {
                 waitingRoom.add(clientHandler);
             }
             new Thread(clientHandler).start();
-            sendPlayersList(); // Ensure the player list is updated upon new connection
+            sendPlayersList();
         }
     }
 
@@ -49,65 +47,67 @@ public class Shefrah2 {
         }
 
         @Override
-    public void run() {
-    try {
-        playerName = in.readLine();
-        if (playerName == null || playerName.trim().isEmpty()) {
-            out.println("Error: Invalid name");
-            socket.close();
-            return;
-        }
-        System.out.println("Player joined: " + playerName);
-        sendPlayersList();
-        broadcastWaitingPlayers();
+        public void run() {
+            try {
+                playerName = in.readLine();
+                if (playerName == null || playerName.trim().isEmpty()) {
+                    out.println("Error: Invalid name");
+                    socket.close();
+                    return;
+                }
+                System.out.println("Player joined: " + playerName);
+                sendPlayersList();
+                broadcastWaitingPlayers();
 
-        String message;
-        while ((message = in.readLine()) != null) {
-            if (message.equals("play")) {
-                synchronized (waitingPlayers) {
-                    if (!waitingPlayers.contains(playerName)) {
-                        waitingPlayers.add(playerName);
+                String message;
+                while ((message = in.readLine()) != null) {
+                    if (message.equals("play")) {
+                        synchronized (waitingPlayers) {
+                            if (!waitingPlayers.contains(playerName)) {
+                                waitingPlayers.add(playerName);
+                            }
+                        }
+                        broadcastWaitingPlayers();
+                        startCountdownIfNeeded();
+                        checkAndStartGame();
+                    } else if (message.startsWith("answer:")) {
+                        String answer = message.substring(7); // Extract the answer
+                        handleAnswer(answer);
                     }
                 }
-                broadcastWaitingPlayers();
-                startCountdownIfNeeded();
-                checkAndStartGame();
-            } else if (message.startsWith("answer:")) {
-                String answer = message.substring(7); // استخراج الإجابة بعد "answer:"
-                handleAnswer(answer); // التحقق من الإجابة
+            } catch (IOException e) {
+                System.out.println("Player " + playerName + " disconnected.");
+            } finally {
+                removePlayer();
             }
         }
-    } catch (IOException e) {
-        System.out.println("Player " + playerName + " disconnected.");
-    } finally {
-        removePlayer();
-    }
-}
 
-         private void handleAnswer(String answer) {
-    try {
-        int playerAnswer = Integer.parseInt(answer);
-        int correctAnswer = answers.get(currentRound);
-        if (playerAnswer == correctAnswer) {
-            // Correct answer, increase score
-            playerScores.put(playerName, playerScores.getOrDefault(playerName, 0) + 1);
-            out.println("Correct! Your score: " + playerScores.get(playerName));
+        private void handleAnswer(String answer) {
+            try {
+                int playerAnswer = Integer.parseInt(answer);
+                int correctAnswer = answers.get(currentRound);
+                if (playerAnswer == correctAnswer) {
+                    playerScores.put(playerName, playerScores.getOrDefault(playerName, 0) + 1);
+                    out.println("Correct! Your score: " + playerScores.get(playerName));
 
-            // Move to the next round
-            currentRound++;
-            if (currentRound < picName.size()) {
-                out.println("NextRound:" + picName.get(currentRound)); // Send next round image name
-            } else {
-                out.println("Game over! Your final score: " + playerScores.get(playerName));
-                endGame();
+                    // Broadcast the updated score to all players
+                    broadcastScoreUpdate(playerName, playerScores.get(playerName));
+
+                    currentRound++;
+                    if (currentRound < picName.size()) {
+                        out.println("NextRound:" + picName.get(currentRound));
+                        broadcastMessage("NextRound:" + picName.get(currentRound)); // Broadcast the next round image
+                    } else {
+                        out.println("GameOver: Your final score: " + playerScores.get(playerName));
+                        endGame();
+                    }
+                } else {
+                    out.println("Incorrect! Try again.");
+                }
+            } catch (Exception e) {
+                out.println("Error: Invalid answer format.");
             }
-        } else {
-            out.println("Incorrect! Try again.");
         }
-    } catch (Exception e) {
-        out.println("Error: Invalid answer format.");
-    }
-}
 
         private void removePlayer() {
             synchronized (waitingRoom) {
@@ -153,6 +153,11 @@ public class Shefrah2 {
         }
     }
 
+    private static void broadcastScoreUpdate(String playerName, int score) {
+        String message = "ScoreUpdate:" + playerName + ":" + score;
+        broadcastMessage(message);
+    }
+
     private static void startCountdownIfNeeded() {
         if (waitingPlayers.size() >= 2 && !timerRunning) {
             timerRunning = true;
@@ -188,20 +193,16 @@ public class Shefrah2 {
 
             for (ClientHandler client : waitingRoom) {
                 if (waitingPlayers.contains(client.playerName)) {
-                    client.sendMessage("GameStart");
+                    client.sendMessage("GameStart:" + picName.get(currentRound));
                 } else {
                     client.sendMessage("StayInWaitingRoom");
                 }
             }
-            closePreviousFrames();
         }
     }
 
-    private static void closePreviousFrames() {
-        broadcastMessage("ClosePreviousFrames");
-    }
     private static void endGame() {
-        broadcastMessage("GameEnd");
+        broadcastMessage("GameOver");
     }
 }
 
