@@ -1,18 +1,17 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class ShClient extends JFrame {
+public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
-        picMap.put("pic1", "/shefrah2/imgSh.png");
-        picMap.put("pic2", "/shefrah2/imgSh2.png");
-        picMap.put("pic3", "/shefrah2/imgSh3.png");
-        picMap.put("pic4", "/shefrah2/imgSh4.png");
+        picMap.put("pic1", "/shefrah1/1.png");
+        picMap.put("pic2", "/shefrah1/2.png");
+        picMap.put("pic3", "/shefrah1/3.png");
+        picMap.put("pic4", "/shefrah1/4.png");
         picMap.put("pic5", "/shefrah2/imgSh5.png");
         picMap.put("pic6", "/shefrah2/imgSh6.png");
         picMap.put("pic7", "/shefrah2/imgSh7.png");
@@ -70,7 +69,7 @@ public class ShClient extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient(socket, playerName).setVisible(true);
+                new ShClient1(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -84,7 +83,7 @@ public class ShClient extends JFrame {
     private BufferedReader in;
     private String playerName;
 
-    public ShClient(Socket socket, String playerName) throws IOException {
+    public ShClient1(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -139,9 +138,7 @@ public class ShClient extends JFrame {
                     String[] parts = serverMessage.substring(12).split(":");
                     String player = parts[0];
                     int score = Integer.parseInt(parts[1]);
-                    if (player.equals(playerName)) {
-                        updateScore(score);
-                    }
+                    updateScore(player, score);
                 } else if (serverMessage.equals("GameOver")) {
                     JOptionPane.showMessageDialog(this, "اللعبة انتهت!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
                     System.exit(0);
@@ -183,11 +180,11 @@ public class ShClient extends JFrame {
         });
     }
 
-    private void updateScore(int score) {
+    private void updateScore(String player, int score) {
         SwingUtilities.invokeLater(() -> {
             for (Window window : Window.getWindows()) {
                 if (window instanceof GameStartFrame) {
-                    ((GameStartFrame) window).updateScore(score);
+                    ((GameStartFrame) window).updateScore(player, score);
                 }
             }
         });
@@ -253,7 +250,7 @@ public class ShClient extends JFrame {
     }
 
     // Game Start Frame
-   static class GameStartFrame extends JFrame {
+    static class GameStartFrame extends JFrame {
     private JLabel displayField;
     private JLabel scoreLabel;
     private JTextField textField;
@@ -301,9 +298,9 @@ public class ShClient extends JFrame {
         submitButton.addActionListener(e -> {
             String answer = textField.getText().trim();
             if (!answer.isEmpty()) {
-                out.println("answer:" + answer);            
+                out.println("answer:" + answer);
+                textField.setText(""); // Clear the text field after submission
             }
-            textField.setText("");
         });
 
         // Start a thread to listen for server messages
@@ -335,12 +332,12 @@ public class ShClient extends JFrame {
                     String[] parts = serverMessage.substring(12).split(":");
                     String player = parts[0];
                     int newScore = Integer.parseInt(parts[1]);
-                    if (player.equals(playerName)) {
-                        updateScore(newScore); // Update the score
-                    }
+                    updateScore(player, newScore); // Update the score
                 } else if (serverMessage.equals("GameOver")) {
                     JOptionPane.showMessageDialog(this, "اللعبة انتهت! نقاطك النهائية: " + score, "Game Over", JOptionPane.INFORMATION_MESSAGE);
                     System.exit(0);
+                } else if (serverMessage.equals("Incorrect")) {
+                    showIncorrectFeedback();
                 }
             }
         } catch (IOException e) {
@@ -348,11 +345,32 @@ public class ShClient extends JFrame {
         }
     }
 
-    // Method to update the score label
-    private void updateScore(int newScore) {
+    private void updateScore(String player, int score) {
         SwingUtilities.invokeLater(() -> {
-            score = newScore;
-            scoreLabel.setText("نقاطك: " + score);
+            if (player.equals(playerName)) {
+                this.score = score;
+                scoreLabel.setText("نقاطك: " + score);
+            }
+        });
+    }
+
+    private void showIncorrectFeedback() {
+        SwingUtilities.invokeLater(() -> {
+            JLabel feedbackLabel = new JLabel("إجابة خاطئة!", SwingConstants.CENTER);
+            feedbackLabel.setFont(new Font("Arial", Font.BOLD, 24));
+            feedbackLabel.setForeground(Color.RED);
+            JPanel feedbackPanel = new JPanel(new BorderLayout());
+            feedbackPanel.add(feedbackLabel, BorderLayout.CENTER);
+            add(feedbackPanel, BorderLayout.NORTH);
+            revalidate();
+            repaint();
+
+            // Use javax.swing.Timer for the feedback
+            new javax.swing.Timer(1500, e -> {
+                remove(feedbackPanel);
+                revalidate();
+                repaint();
+            }).start();
         });
     }
 }
