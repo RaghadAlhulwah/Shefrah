@@ -18,8 +18,6 @@ public class Shefrah1 {
     private static final List<Integer> answers = Arrays.asList(
         25, 15, 30, 40, 35, 5, 45, 50, 20, 10, 65, 55, 30, 25, 10
     );
-    private static int currentRound = 0;
-    private static Timer gameDurationTimer;
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
@@ -57,9 +55,14 @@ public class Shefrah1 {
                     socket.close();
                     return;
                 }
+                
+                // Initialize player score
+                synchronized (playerScores) {
+                    playerScores.put(playerName, 0);
+                }
+                broadcastScores();
+                
                 System.out.println("Player joined: " + playerName);
-                playerScores.put(playerName, 0);
-                playerLevels.put(playerName, 0);
                 sendPlayersList();
                 broadcastWaitingPlayers();
 
@@ -75,8 +78,7 @@ public class Shefrah1 {
                         startCountdownIfNeeded();
                         checkAndStartGame();
                     } else if (message.startsWith("answer:")) {
-                        String answer = message.substring(7); // Extract the answer
-                        handleAnswer(answer);
+                        handleAnswer(message.substring(7));
                     }
                 }
             } catch (IOException e) {
@@ -92,17 +94,20 @@ public class Shefrah1 {
                 int playerLevel = playerLevels.get(playerName);
                 int correctAnswer = answers.get(playerLevel);
                 if (playerAnswer == correctAnswer) {
-                    playerScores.put(playerName, playerScores.get(playerName) + 1);
+                    int newScore = playerScores.get(playerName) + 1;
+                    
+                    synchronized (playerScores) {
+                        playerScores.put(playerName, newScore);
+                    }
+                    broadcastScores();
+                    
+                    out.println("Correct!");
                     playerLevels.put(playerName, playerLevel + 1);
-                    out.println("Correct! Your score: " + playerScores.get(playerName));
-
-                    // Broadcast the updated score to all players
-                    broadcastScoreUpdate(playerName, playerScores.get(playerName));
 
                     if (playerLevel + 1 < picName.size()) {
                         out.println("NextRound:" + picName.get(playerLevel + 1));
                     } else {
-                        out.println("GameOver: Your final score: " + playerScores.get(playerName));
+                        out.println("GameOver: Your final score: " + newScore);
                         endGame();
                     }
                 } else {
@@ -120,15 +125,36 @@ public class Shefrah1 {
             synchronized (waitingPlayers) {
                 waitingPlayers.remove(playerName);
             }
-            playerScores.remove(playerName);
-            playerLevels.remove(playerName);
+            synchronized (playerScores) {
+                playerScores.remove(playerName);
+            }
+            broadcastScores();
             sendPlayersList();
             broadcastWaitingPlayers();
+            
+            try {
+                socket.close();
+            } catch (IOException e) {
+                System.out.println("Error closing socket for " + playerName);
+            }
         }
 
         public void sendMessage(String message) {
             out.println(message);
         }
+    }
+
+    private static void broadcastScores() {
+        StringBuilder sb = new StringBuilder("SCORES:");
+        synchronized (playerScores) {
+            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+                sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+            }
+        }
+        if (sb.length() > 7) {
+            sb.setLength(sb.length() - 1);
+        }
+        broadcastMessage(sb.toString());
     }
 
     private static void sendPlayersList() {
@@ -157,11 +183,6 @@ public class Shefrah1 {
                 client.sendMessage(message);
             }
         }
-    }
-
-    private static void broadcastScoreUpdate(String playerName, int score) {
-        String message = "ScoreUpdate:" + playerName + ":" + score;
-        broadcastMessage(message);
     }
 
     private static void startCountdownIfNeeded() {
@@ -197,18 +218,14 @@ public class Shefrah1 {
             countdown = 30;
             System.out.println("Game started!");
 
-            // Start the 2-minute game duration timer
-            gameDurationTimer = new Timer();
-            gameDurationTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    endGame();
-                }
-            }, 120000); // 2 minutes = 120,000 milliseconds
+            // Initialize player levels for the game
+            for (String player : waitingPlayers) {
+                playerLevels.put(player, 0);
+            }
 
             for (ClientHandler client : waitingRoom) {
                 if (waitingPlayers.contains(client.playerName)) {
-                    client.sendMessage("GameStart:" + picName.get(playerLevels.get(client.playerName)));
+                    client.sendMessage("GameStart:" + picName.get(0));
                 } else {
                     client.sendMessage("StayInWaitingRoom");
                 }
@@ -218,8 +235,5 @@ public class Shefrah1 {
 
     private static void endGame() {
         broadcastMessage("GameOver");
-        if (gameDurationTimer != null) {
-            gameDurationTimer.cancel();
-        }
     }
 }
