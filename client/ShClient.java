@@ -8,10 +8,10 @@ public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
-        picMap.put("pic1", "/shefrah1/1.png");
-        picMap.put("pic2", "/shefrah1/2.png");
-        picMap.put("pic3", "/shefrah1/3.png");
-        picMap.put("pic4", "/shefrah1/4.png");
+        picMap.put("pic1", "/shefrah2/imgSh.png");
+        picMap.put("pic2", "/shefrah2/imgSh2.png");
+        picMap.put("pic3", "/shefrah2/imgSh3.png");
+        picMap.put("pic4", "/shefrah2/imgSh4.png");
         picMap.put("pic5", "/shefrah2/imgSh5.png");
         picMap.put("pic6", "/shefrah2/imgSh6.png");
         picMap.put("pic7", "/shefrah2/imgSh7.png");
