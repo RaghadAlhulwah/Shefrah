@@ -56,9 +56,11 @@ public class Shefrah1 {
                     return;
                 }
                 
-                // Initialize player score
                 synchronized (playerScores) {
                     playerScores.put(playerName, 0);
+                }
+                synchronized (playerLevels) {
+                    playerLevels.put(playerName, 0);
                 }
                 broadcastScores();
                 
@@ -91,24 +93,34 @@ public class Shefrah1 {
         private void handleAnswer(String answer) {
             try {
                 int playerAnswer = Integer.parseInt(answer);
-                int playerLevel = playerLevels.get(playerName);
-                int correctAnswer = answers.get(playerLevel);
+                int currentLevel;
+                synchronized (playerLevels) {
+                    currentLevel = playerLevels.get(playerName);
+                }
+                
+                if (currentLevel >= answers.size()) {
+                    out.println("GameOver: Your final score: " + playerScores.get(playerName));
+                    return;
+                }
+                
+                int correctAnswer = answers.get(currentLevel);
                 if (playerAnswer == correctAnswer) {
-                    int newScore = playerScores.get(playerName) + 1;
-                    
                     synchronized (playerScores) {
+                        int newScore = playerScores.get(playerName) + 1;
                         playerScores.put(playerName, newScore);
                     }
                     broadcastScores();
                     
+                    synchronized (playerLevels) {
+                        playerLevels.put(playerName, currentLevel + 1);
+                    }
+                    
                     out.println("Correct!");
-                    playerLevels.put(playerName, playerLevel + 1);
-
-                    if (playerLevel + 1 < picName.size()) {
-                        out.println("NextRound:" + picName.get(playerLevel + 1));
+                    
+                    if (currentLevel + 1 < picName.size()) {
+                        out.println("NextRound:" + picName.get(currentLevel + 1));
                     } else {
-                        out.println("GameOver: Your final score: " + newScore);
-                        endGame();
+                        out.println("GameOver: Your final score: " + playerScores.get(playerName));
                     }
                 } else {
                     out.println("Incorrect! Try again.");
@@ -127,6 +139,9 @@ public class Shefrah1 {
             }
             synchronized (playerScores) {
                 playerScores.remove(playerName);
+            }
+            synchronized (playerLevels) {
+                playerLevels.remove(playerName);
             }
             broadcastScores();
             sendPlayersList();
@@ -219,8 +234,10 @@ public class Shefrah1 {
             System.out.println("Game started!");
 
             // Initialize player levels for the game
-            for (String player : waitingPlayers) {
-                playerLevels.put(player, 0);
+            synchronized (playerLevels) {
+                for (String player : waitingPlayers) {
+                    playerLevels.put(player, 0);
+                }
             }
 
             for (ClientHandler client : waitingRoom) {
@@ -231,9 +248,5 @@ public class Shefrah1 {
                 }
             }
         }
-    }
-
-    private static void endGame() {
-        broadcastMessage("GameOver");
     }
 }
