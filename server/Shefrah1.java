@@ -2,13 +2,14 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
     private static boolean timerRunning = false;
     private static Timer gameTimer;
     private static final Map<String, Integer> playerScores = new HashMap<>();
+    private static final Map<String, Integer> playerLevels = new HashMap<>();
     private static final List<String> picName = Arrays.asList(
         "pic1", "pic2", "pic3", "pic4", "pic5", 
         "pic6", "pic7", "pic8", "pic9",
@@ -18,6 +19,7 @@ public class Shefrah2 {
         25, 15, 30, 40, 35, 5, 45, 50, 20, 10, 65, 55, 30, 25, 10
     );
     private static int currentRound = 0;
+    private static Timer gameDurationTimer;
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
@@ -56,6 +58,8 @@ public class Shefrah2 {
                     return;
                 }
                 System.out.println("Player joined: " + playerName);
+                playerScores.put(playerName, 0);
+                playerLevels.put(playerName, 0);
                 sendPlayersList();
                 broadcastWaitingPlayers();
 
@@ -63,7 +67,7 @@ public class Shefrah2 {
                 while ((message = in.readLine()) != null) {
                     if (message.equals("play")) {
                         synchronized (waitingPlayers) {
-                            if (!waitingPlayers.contains(playerName)) {
+                            if (waitingPlayers.size() < 4 && !waitingPlayers.contains(playerName)) {
                                 waitingPlayers.add(playerName);
                             }
                         }
@@ -85,18 +89,18 @@ public class Shefrah2 {
         private void handleAnswer(String answer) {
             try {
                 int playerAnswer = Integer.parseInt(answer);
-                int correctAnswer = answers.get(currentRound);
+                int playerLevel = playerLevels.get(playerName);
+                int correctAnswer = answers.get(playerLevel);
                 if (playerAnswer == correctAnswer) {
-                    playerScores.put(playerName, playerScores.getOrDefault(playerName, 0) + 1);
+                    playerScores.put(playerName, playerScores.get(playerName) + 1);
+                    playerLevels.put(playerName, playerLevel + 1);
                     out.println("Correct! Your score: " + playerScores.get(playerName));
 
                     // Broadcast the updated score to all players
                     broadcastScoreUpdate(playerName, playerScores.get(playerName));
 
-                    currentRound++;
-                    if (currentRound < picName.size()) {
-                        out.println("NextRound:" + picName.get(currentRound));
-                        broadcastMessage("NextRound:" + picName.get(currentRound)); // Broadcast the next round image
+                    if (playerLevel + 1 < picName.size()) {
+                        out.println("NextRound:" + picName.get(playerLevel + 1));
                     } else {
                         out.println("GameOver: Your final score: " + playerScores.get(playerName));
                         endGame();
@@ -116,6 +120,8 @@ public class Shefrah2 {
             synchronized (waitingPlayers) {
                 waitingPlayers.remove(playerName);
             }
+            playerScores.remove(playerName);
+            playerLevels.remove(playerName);
             sendPlayersList();
             broadcastWaitingPlayers();
         }
@@ -191,9 +197,18 @@ public class Shefrah2 {
             countdown = 30;
             System.out.println("Game started!");
 
+            // Start the 2-minute game duration timer
+            gameDurationTimer = new Timer();
+            gameDurationTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    endGame();
+                }
+            }, 120000); // 2 minutes = 120,000 milliseconds
+
             for (ClientHandler client : waitingRoom) {
                 if (waitingPlayers.contains(client.playerName)) {
-                    client.sendMessage("GameStart:" + picName.get(currentRound));
+                    client.sendMessage("GameStart:" + picName.get(playerLevels.get(client.playerName)));
                 } else {
                     client.sendMessage("StayInWaitingRoom");
                 }
@@ -203,7 +218,8 @@ public class Shefrah2 {
 
     private static void endGame() {
         broadcastMessage("GameOver");
+        if (gameDurationTimer != null) {
+            gameDurationTimer.cancel();
+        }
     }
 }
-
-
