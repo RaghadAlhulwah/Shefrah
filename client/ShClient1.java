@@ -9,9 +9,9 @@ public class ShClient1 extends JFrame {
 
     static {
         picMap.put("pic1", "imgSh.png");
-        picMap.put("pic2", "/shefrah2/imgSh2.png");
-        picMap.put("pic3", "/shefrah2/imgSh3.png");
-        picMap.put("pic4", "/shefrah2/imgSh4.png");
+        picMap.put("pic2", "imgSh2.png");
+        picMap.put("pic3", "imgSh3.png");
+        picMap.put("pic4", "imgSh4.png");
         picMap.put("pic5", "/shefrah2/imgSh5.png");
         picMap.put("pic6", "/shefrah2/imgSh6.png");
         picMap.put("pic7", "/shefrah2/imgSh7.png");
@@ -134,9 +134,10 @@ public class ShClient1 extends JFrame {
                     openGameStartFrame(serverMessage.substring(10));
                 } else if (serverMessage.startsWith("SCORES:")) {
                     updateScoreboard(serverMessage.substring(7));
-                } else if (serverMessage.equals("GameOver")) {
-                    JOptionPane.showMessageDialog(this, "اللعبة انتهت!", "Game Over", JOptionPane.INFORMATION_MESSAGE);
-                    System.exit(0);
+                } else if (serverMessage.startsWith("NextRound:")) {
+                    updateCurrentImage(serverMessage.substring(10));
+                } else if (serverMessage.startsWith("GameOver:")) {
+                    showGameOver(serverMessage.substring(9));
                 }
             }
         } catch (IOException e) {
@@ -185,6 +186,23 @@ public class ShClient1 extends JFrame {
         });
     }
 
+    private void updateCurrentImage(String imageName) {
+        SwingUtilities.invokeLater(() -> {
+            for (Window window : Window.getWindows()) {
+                if (window instanceof GameStartFrame) {
+                    ((GameStartFrame) window).updateImage(imageName);
+                }
+            }
+        });
+    }
+
+    private void showGameOver(String message) {
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(null, message, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+            System.exit(0);
+        });
+    }
+
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
             ReadyPlayersFrame readyPlayersFrame = new ReadyPlayersFrame(playerName);
@@ -195,7 +213,7 @@ public class ShClient1 extends JFrame {
 
     private void openGameStartFrame(String imageName) {
         SwingUtilities.invokeLater(() -> {
-            new GameStartFrame(socket, imageName, playerName).setVisible(true);
+            new GameStartFrame(socket, imageName, playerName, out).setVisible(true);
             for (Window window : Window.getWindows()) {
                 if (window instanceof ReadyPlayersFrame) {
                     window.dispose();
@@ -248,15 +266,15 @@ public class ShClient1 extends JFrame {
         private JTextField textField;
         private JButton submitButton;
         private PrintWriter out;
-        private BufferedReader in;
         private String playerName;
-        private int score = 0;
         private JPanel scoreboardPanel;
         private JLabel[] playerScoreLabels = new JLabel[4];
 
-        public GameStartFrame(Socket socket, String imageName, String playerName) {
+        public GameStartFrame(Socket socket, String imageName, String playerName, PrintWriter out) {
             this.playerName = playerName;
-            setTitle("شفرة - بدء اللعبة");
+            this.out = out;
+            
+            setTitle("شفرة - بدء اللعبة - " + playerName);
             setSize(800, 600);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
@@ -278,14 +296,6 @@ public class ShClient1 extends JFrame {
             // Initialize Scoreboard
             initScoreboard();
 
-            // Set up socket communication
-            try {
-                out = new PrintWriter(socket.getOutputStream(), true);
-                in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
             // Submit Button Action
             submitButton.addActionListener(e -> {
                 String answer = textField.getText().trim();
@@ -294,9 +304,6 @@ public class ShClient1 extends JFrame {
                     textField.setText("");
                 }
             });
-
-            // Start a thread to listen for server messages
-            new Thread(this::listenForServerMessages).start();
         }
 
         private void initScoreboard() {
@@ -315,7 +322,7 @@ public class ShClient1 extends JFrame {
             add(scoreboardPanel, BorderLayout.EAST);
         }
 
-        private void updateImage(String imageName) {
+        public void updateImage(String imageName) {
             SwingUtilities.invokeLater(() -> {
                 String path = picMap.get(imageName);
                 if (path != null) {
@@ -357,49 +364,6 @@ public class ShClient1 extends JFrame {
                         }
                     }
                 }
-            });
-        }
-
-        private void listenForServerMessages() {
-            try {
-                String serverMessage;
-                while ((serverMessage = in.readLine()) != null) {
-                    System.out.println("Server: " + serverMessage);
-                    if (serverMessage.startsWith("NextRound:")) {
-                        String nextImageName = serverMessage.substring(10);
-                        updateImage(nextImageName);
-                    } else if (serverMessage.startsWith("SCORES:")) {
-                        updateScoreboard(serverMessage.substring(7));
-                    } else if (serverMessage.equals("GameOver")) {
-                        JOptionPane.showMessageDialog(this, 
-                            "اللعبة انتهت! نقاطك النهائية: " + score, 
-                            "Game Over", JOptionPane.INFORMATION_MESSAGE);
-                        System.exit(0);
-                    } else if (serverMessage.equals("Incorrect")) {
-                        showIncorrectFeedback();
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        private void showIncorrectFeedback() {
-            SwingUtilities.invokeLater(() -> {
-                JLabel feedbackLabel = new JLabel("إجابة خاطئة!", SwingConstants.CENTER);
-                feedbackLabel.setFont(new Font("Arial", Font.BOLD, 24));
-                feedbackLabel.setForeground(Color.RED);
-                JPanel feedbackPanel = new JPanel(new BorderLayout());
-                feedbackPanel.add(feedbackLabel, BorderLayout.CENTER);
-                add(feedbackPanel, BorderLayout.NORTH);
-                revalidate();
-                repaint();
-
-                new javax.swing.Timer(1500, e -> {
-                    remove(feedbackPanel);
-                    revalidate();
-                    repaint();
-                }).start();
             });
         }
     }
