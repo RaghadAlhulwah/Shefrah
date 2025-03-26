@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -94,10 +94,11 @@ public class Shefrah2 {
         }
 
         private void handleAnswer(String answer) {
-                if (remainingGameTime <= 0) {
-        out.println("GameOver:Time's up! final scores:" + getFinalScores());
-        return;
-    }
+            if (remainingGameTime <= 0) {
+                out.println("GameOver:Time's up! final scores:" + getFinalScores());
+                return;
+            }
+            
             try {
                 int playerAnswer = Integer.parseInt(answer);
                 int currentLevel;
@@ -106,7 +107,9 @@ public class Shefrah2 {
                 }
                 
                 if (currentLevel >= answers.size()) {
-             out.println("GameOver: Your final score: " + playerScores.get(playerName) + " final scores:" + getFinalScores());                    return;
+                    out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
+                              " final scores:" + getFinalScores());
+                    return;
                 }
                 
                 int correctAnswer = answers.get(currentLevel);
@@ -126,15 +129,18 @@ public class Shefrah2 {
                     if (currentLevel + 1 < picName.size()) {
                         out.println("NextRound:" + picName.get(currentLevel + 1));
                     } else {
-                        out.println("GameOver: Your final score: " + playerScores.get(playerName));
+                        out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
+                                  " final scores:" + getFinalScores());
                     }
                 } else {
+                    // إرسال رسالة WrongAnswer للعميل
+                    out.println("WrongAnswer");
                     out.println("Incorrect! Try again.");
                 }
             } catch (Exception e) {
                 out.println("Error: Invalid answer format.");
             }
-}
+        }
         
 
         private void removePlayer() {
