@@ -1,29 +1,41 @@
 import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.ComponentOrientation;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Image;
+import java.awt.MediaTracker;
+import java.awt.Window;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import javax.swing.text.*;
+import java.util.Map.Entry;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
-        picMap.put("pic1", "imgSh.png");
-        picMap.put("pic2", "imgSh2.png");
-        picMap.put("pic3", "imgSh3.png");
-        picMap.put("pic4", "imgSh4.png");
-        picMap.put("pic5", "/shefrah2/imgSh5.png");
-        picMap.put("pic6", "/shefrah2/imgSh6.png");
-        picMap.put("pic7", "/shefrah2/imgSh7.png");
-        picMap.put("pic8", "/shefrah2/imgSh8.png");
-        picMap.put("pic9", "/shefrah2/imgSh9.png");
-        picMap.put("pic10", "/shefrah2/imgSh10.png");
-        picMap.put("pic11", "/shefrah2/imgSh11.png");
-        picMap.put("pic12", "/shefrah2/imgSh12.png");
-        picMap.put("pic13", "/shefrah2/imgSh13.png");
-        picMap.put("pic14", "/shefrah2/imgSh14.png");
-        picMap.put("pic15", "/shefrah2/imgSh15.png");
+ picMap.put("pic1", "/shefrah2/imgSh2.jpg");
+        picMap.put("pic2", "/shefrah2/imgSh3.jpg");
+        picMap.put("pic3", "/shefrah2/imgSh4.jpg");
+        picMap.put("pic4", "/shefrah2/imgSh5.jpg");
+        picMap.put("pic5", "/shefrah2/imgSh6.jpg");
+        picMap.put("pic6", "/shefrah2/imgSh7.jpg");
+        picMap.put("pic7", "/shefrah2/imgSh8.png");
+        picMap.put("pic8", "/shefrah2/imgSh9.png");
+        picMap.put("pic9", "/shefrah2/imgSh10.png");
+        picMap.put("pic10", "/shefrah2/imgSh11.png");
+        picMap.put("pic11", "/shefrah2/imgSh12.png");
+        picMap.put("pic12", "/shefrah2/imgSh13.png");
+        picMap.put("pic13", "/shefrah2/imgSh14.png");
+        picMap.put("pic14", "/shefrah2/imgSh15.png");
+        picMap.put("pic15", "/shefrah2/imgSh16.png");
     }
+        private static JLabel totalGameTimerLabel;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
@@ -68,7 +80,7 @@ public class ShClient1 extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient1(socket, playerName).setVisible(true);
+                new ShClient(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -81,7 +93,7 @@ public class ShClient1 extends JFrame {
     private BufferedReader in;
     private String playerName;
 
-    public ShClient1(Socket socket, String playerName) throws IOException {
+    public ShClient(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -89,7 +101,7 @@ public class ShClient1 extends JFrame {
         out = new PrintWriter(socket.getOutputStream(), true);
 
         setTitle("شفرة - " + playerName);
-        setSize(800, 600);
+        setSize(400, 200);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -138,7 +150,11 @@ public class ShClient1 extends JFrame {
                     updateCurrentImage(serverMessage.substring(10));
                 } else if (serverMessage.startsWith("GameOver:")) {
                     showGameOver(serverMessage.substring(9));
-                }
+                }else if (serverMessage.startsWith("TotalGameTimer:")) {
+                updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
+             }else if (serverMessage.startsWith("Warning:")) {
+    showWarning(serverMessage.substring(8));
+}
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -195,13 +211,35 @@ public class ShClient1 extends JFrame {
             }
         });
     }
+    
+private void showGameOver(String message) {
+    SwingUtilities.invokeLater(() -> {
+        // Parse the scores from the server message
+        Map<String, Integer> finalScores = new HashMap<>();
+        if (message.contains("final scores:")) {
+            String scoresPart = message.substring(message.indexOf("final scores:") + 13);
+            String[] playerEntries = scoresPart.split(",");
+            for (String entry : playerEntries) {
+                String[] parts = entry.split(":");
+                if (parts.length == 2) {
+                    try {
+                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
 
-    private void showGameOver(String message) {
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(null, message, "Game Over", JOptionPane.INFORMATION_MESSAGE);
-            System.exit(0);
-        });
-    }
+        // Close all existing windows
+        for (Window window : Window.getWindows()) {
+            window.dispose();
+        }
+
+        // Show the winner frame
+        new WinnerFrame(finalScores).setVisible(true);
+    });
+}
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -296,6 +334,10 @@ public class ShClient1 extends JFrame {
             // Initialize Scoreboard
             initScoreboard();
 
+            // إضافة تايمر اللعبة الكاملة
+            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 02:00", SwingConstants.CENTER);
+            totalGameTimerLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            add(totalGameTimerLabel, BorderLayout.NORTH);
             // Submit Button Action
             submitButton.addActionListener(e -> {
                 String answer = textField.getText().trim();
@@ -367,4 +409,118 @@ public class ShClient1 extends JFrame {
             });
         }
     }
+    
+    
+    static class WinnerFrame extends JFrame {
+    private JTextArea winnerArea;
+    private JButton exitButton;
+   
+
+    public WinnerFrame(Map<String, Integer> finalScores) {
+        setTitle("نتائج النهائية");
+        setSize(500, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+
+        winnerArea = new JTextArea();
+        winnerArea.setEditable(false);
+        winnerArea.setFont(new Font("Arial", Font.PLAIN, 18));
+        winnerArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+
+        exitButton = new JButton("خروج");
+        exitButton.addActionListener(e -> System.exit(0));
+
+        add(new JScrollPane(winnerArea), BorderLayout.CENTER);
+        add(exitButton, BorderLayout.SOUTH);
+
+        determineWinners(finalScores);
+    }
+
+    private void determineWinners(Map<String, Integer> scores) {
+        if (scores.isEmpty()) {
+            winnerArea.setText("لا يوجد لاعبون في النتائج النهائية");
+            return;
+        }
+
+        // Find the highest score
+        int maxScore = Collections.max(scores.values());
+        
+        // Find all players with max score
+        List<String> winners = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : scores.entrySet()) {
+            if (entry.getValue() == maxScore) {
+                winners.add(entry.getKey());
+            }
+        }
+
+        // Prepare the results text
+        StringBuilder sb = new StringBuilder();
+        sb.append("النتائج النهائية:\n\n");
+        
+        // Sort players by score (descending)
+        List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
+        sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+
+        // Display all players' scores
+        for (Map.Entry<String, Integer> entry : sortedEntries) {
+            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+        }
+
+        sb.append("\n");
+
+        // Determine and display winner(s)
+        if (winners.size() == scores.size() && winners.size() > 1) {
+            sb.append("لا يوجد فائز! جميع اللاعبين لديهم نفس النتيجة");
+        } else if (winners.size() == 1) {
+            sb.append("الفائزة : ").append(winners.get(0)).append("!");
+        } else {
+            sb.append("الفائزات :\n");
+            for (String winner : winners) {
+                sb.append(winner).append("\n");
+            }
+        }
+
+        winnerArea.setText(sb.toString());
+
+        // Highlight winners in the text
+        for (String winner : winners) {
+            highlightText(winner);
+        }
+    }
+
+    private void highlightText(String textToHighlight) {
+        String content = winnerArea.getText();
+        int start = content.indexOf(textToHighlight);
+        while (start >= 0) {
+            int end = start + textToHighlight.length();
+            winnerArea.setSelectionStart(start);
+            winnerArea.setSelectionEnd(end);
+            winnerArea.replaceSelection(textToHighlight);  // Correct            winnerArea.select(start, end);
+            winnerArea.setSelectionColor(Color.YELLOW);
+            winnerArea.setSelectionStart(end);
+            winnerArea.setSelectionEnd(end);
+            start = content.indexOf(textToHighlight, end);
+        }
+    }
+}
+ public void updateTotalGameTimer(int timeLeft) {
+            SwingUtilities.invokeLater(() -> {
+                int minutes = timeLeft / 60;
+                int seconds = timeLeft % 60;
+                String timeText = String.format("الوقت المتبقي للعبة: %02d:%02d", minutes, seconds);
+                totalGameTimerLabel.setText(timeText);
+                
+                if (timeLeft <= 30) {
+                    totalGameTimerLabel.setForeground(Color.RED);
+                }
+            });
+        }
+    
+    private void showWarning(String message) {
+    SwingUtilities.invokeLater(() -> {
+        JOptionPane.showMessageDialog(this, message, "تحذير", JOptionPane.WARNING_MESSAGE);
+    });
+}
+    
 }
