@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.ComponentOrientation;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -13,13 +14,14 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 import javax.swing.text.*;
+import javax.swing.Timer;
 import java.util.Map.Entry;
 
-public class ShClient extends JFrame {
+public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
- picMap.put("pic1", "/shefrah2/imgSh2.jpg");
+        picMap.put("pic1", "/shefrah2/imgSh2.jpg");
         picMap.put("pic2", "/shefrah2/imgSh3.jpg");
         picMap.put("pic3", "/shefrah2/imgSh4.jpg");
         picMap.put("pic4", "/shefrah2/imgSh5.jpg");
@@ -35,7 +37,8 @@ public class ShClient extends JFrame {
         picMap.put("pic14", "/shefrah2/imgSh15.png");
         picMap.put("pic15", "/shefrah2/imgSh16.png");
     }
-        private static JLabel totalGameTimerLabel;
+
+    private static JLabel totalGameTimerLabel;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
@@ -80,7 +83,7 @@ public class ShClient extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient(socket, playerName).setVisible(true);
+                new ShClient1(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -93,7 +96,7 @@ public class ShClient extends JFrame {
     private BufferedReader in;
     private String playerName;
 
-    public ShClient(Socket socket, String playerName) throws IOException {
+    public ShClient1(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -150,11 +153,17 @@ public class ShClient extends JFrame {
                     updateCurrentImage(serverMessage.substring(10));
                 } else if (serverMessage.startsWith("GameOver:")) {
                     showGameOver(serverMessage.substring(9));
-                }else if (serverMessage.startsWith("TotalGameTimer:")) {
-                updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
-             }else if (serverMessage.startsWith("Warning:")) {
-    showWarning(serverMessage.substring(8));
-}
+                } else if (serverMessage.startsWith("TotalGameTimer:")) {
+                    updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
+                } else if (serverMessage.startsWith("WrongAnswer")) {
+                    for (Window window : Window.getWindows()) {
+                        if (window instanceof GameStartFrame) {
+                            ((GameStartFrame) window).showErrorMessage("إجابة خاطئة");
+                        }
+                    }
+                } else if (serverMessage.startsWith("Warning:")) {
+                    showWarning(serverMessage.substring(8));
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -211,35 +220,32 @@ public class ShClient extends JFrame {
             }
         });
     }
-    
-private void showGameOver(String message) {
-    SwingUtilities.invokeLater(() -> {
-        // Parse the scores from the server message
-        Map<String, Integer> finalScores = new HashMap<>();
-        if (message.contains("final scores:")) {
-            String scoresPart = message.substring(message.indexOf("final scores:") + 13);
-            String[] playerEntries = scoresPart.split(",");
-            for (String entry : playerEntries) {
-                String[] parts = entry.split(":");
-                if (parts.length == 2) {
-                    try {
-                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
-                    } catch (NumberFormatException e) {
-                        e.printStackTrace();
+
+    private void showGameOver(String message) {
+        SwingUtilities.invokeLater(() -> {
+            Map<String, Integer> finalScores = new HashMap<>();
+            if (message.contains("final scores:")) {
+                String scoresPart = message.substring(message.indexOf("final scores:") + 13);
+                String[] playerEntries = scoresPart.split(",");
+                for (String entry : playerEntries) {
+                    String[] parts = entry.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            finalScores.put(parts[0], Integer.parseInt(parts[1]));
+                        } catch (NumberFormatException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
-        }
 
-        // Close all existing windows
-        for (Window window : Window.getWindows()) {
-            window.dispose();
-        }
+            for (Window window : Window.getWindows()) {
+                window.dispose();
+            }
 
-        // Show the winner frame
-        new WinnerFrame(finalScores).setVisible(true);
-    });
-}
+            new WinnerFrame(finalScores).setVisible(true);
+        });
+    }
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -307,23 +313,55 @@ private void showGameOver(String message) {
         private String playerName;
         private JPanel scoreboardPanel;
         private JLabel[] playerScoreLabels = new JLabel[4];
+        private JLabel errorMessageLabel;
+        private JPanel topPanel;
+        private JPanel centerPanel;
 
         public GameStartFrame(Socket socket, String imageName, String playerName, PrintWriter out) {
             this.playerName = playerName;
             this.out = out;
-            
+
             setTitle("شفرة - بدء اللعبة - " + playerName);
             setSize(800, 600);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
             setLayout(new BorderLayout());
 
-            // Image Display
-            displayField = new JLabel();
-            updateImage(imageName);
-            add(displayField, BorderLayout.CENTER);
+            // إنشاء لوحة علوية تحتوي على المؤقت ورسالة الخطأ
+            topPanel = new JPanel();
+            topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+            
+            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 02:00", JLabel.CENTER);
+            totalGameTimerLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            errorMessageLabel = new JLabel("", JLabel.CENTER);
+            errorMessageLabel.setFont(new Font("Arial", Font.BOLD, 24));
+            errorMessageLabel.setForeground(Color.RED);
+            errorMessageLabel.setVisible(false);
+            errorMessageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            
+            topPanel.add(totalGameTimerLabel);
+            topPanel.add(Box.createVerticalStrut(10)); // مسافة بين العناصر
+            topPanel.add(errorMessageLabel);
+            
+            add(topPanel, BorderLayout.NORTH);
 
-            // Input Panel
+            // لوحة مركزية للصورة ولوحة النتائج
+            centerPanel = new JPanel(new BorderLayout());
+            
+            // عرض الصورة
+            displayField = new JLabel("", JLabel.CENTER);
+            updateImage(imageName);
+            centerPanel.add(displayField, BorderLayout.CENTER);
+            
+            // لوحة النتائج
+            initScoreboard();
+            centerPanel.add(scoreboardPanel, BorderLayout.EAST);
+            
+            add(centerPanel, BorderLayout.CENTER);
+
+            // لوحة الإدخال
             JPanel inputPanel = new JPanel();
             textField = new JTextField(20);
             submitButton = new JButton("إرسال");
@@ -331,20 +369,32 @@ private void showGameOver(String message) {
             inputPanel.add(submitButton);
             add(inputPanel, BorderLayout.SOUTH);
 
-            // Initialize Scoreboard
-            initScoreboard();
-
-            // إضافة تايمر اللعبة الكاملة
-            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 02:00", SwingConstants.CENTER);
-            totalGameTimerLabel.setFont(new Font("Arial", Font.BOLD, 18));
-            add(totalGameTimerLabel, BorderLayout.NORTH);
-            // Submit Button Action
+            // إجراءات الزر
             submitButton.addActionListener(e -> {
                 String answer = textField.getText().trim();
                 if (!answer.isEmpty()) {
                     out.println("answer:" + answer);
                     textField.setText("");
                 }
+            });
+        }
+
+        public void showErrorMessage(String message) {
+            SwingUtilities.invokeLater(() -> {
+                errorMessageLabel.setText(message);
+                errorMessageLabel.setVisible(true);
+                
+                // إعادة رسم النافذة للتأكد من ظهور الرسالة
+                topPanel.revalidate();
+                topPanel.repaint();
+
+                Timer timer = new Timer(1500, e -> {
+                    errorMessageLabel.setVisible(false);
+                    topPanel.revalidate();
+                    topPanel.repaint();
+                });
+                timer.setRepeats(false);
+                timer.start();
             });
         }
 
@@ -355,13 +405,11 @@ private void showGameOver(String message) {
             scoreboardPanel.setPreferredSize(new Dimension(200, 150));
 
             for (int i = 0; i < 4; i++) {
-                playerScoreLabels[i] = new JLabel("...: 0");
+                playerScoreLabels[i] = new JLabel("");
                 playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
                 playerScoreLabels[i].setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
                 scoreboardPanel.add(playerScoreLabels[i]);
             }
-
-            add(scoreboardPanel, BorderLayout.EAST);
         }
 
         public void updateImage(String imageName) {
@@ -383,12 +431,10 @@ private void showGameOver(String message) {
 
         public void updateScoreboard(String scoresData) {
             SwingUtilities.invokeLater(() -> {
-                // Clear existing
                 for (JLabel label : playerScoreLabels) {
-                    label.setText("...: 0");
+                    label.setText("");
                 }
 
-                // Parse and update
                 String[] players = scoresData.split(",");
                 for (int i = 0; i < Math.min(players.length, 4); i++) {
                     String[] parts = players[i].split(":");
@@ -409,118 +455,108 @@ private void showGameOver(String message) {
             });
         }
     }
-    
-    
+
     static class WinnerFrame extends JFrame {
-    private JTextArea winnerArea;
-    private JButton exitButton;
-   
+        private JTextArea winnerArea;
+        private JButton exitButton;
 
-    public WinnerFrame(Map<String, Integer> finalScores) {
-        setTitle("نتائج النهائية");
-        setSize(500, 400);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+        public WinnerFrame(Map<String, Integer> finalScores) {
+            setTitle("نتائج النهائية");
+            setSize(500, 400);
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+            setLayout(new BorderLayout());
 
-        winnerArea = new JTextArea();
-        winnerArea.setEditable(false);
-        winnerArea.setFont(new Font("Arial", Font.PLAIN, 18));
-        winnerArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+            winnerArea = new JTextArea();
+            winnerArea.setEditable(false);
+            winnerArea.setFont(new Font("Arial", Font.PLAIN, 18));
+            winnerArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
 
-        exitButton = new JButton("خروج");
-        exitButton.addActionListener(e -> System.exit(0));
+            exitButton = new JButton("خروج");
+            exitButton.addActionListener(e -> System.exit(0));
 
-        add(new JScrollPane(winnerArea), BorderLayout.CENTER);
-        add(exitButton, BorderLayout.SOUTH);
+            add(new JScrollPane(winnerArea), BorderLayout.CENTER);
+            add(exitButton, BorderLayout.SOUTH);
 
-        determineWinners(finalScores);
-    }
-
-    private void determineWinners(Map<String, Integer> scores) {
-        if (scores.isEmpty()) {
-            winnerArea.setText("لا يوجد لاعبون في النتائج النهائية");
-            return;
+            determineWinners(finalScores);
         }
 
-        // Find the highest score
-        int maxScore = Collections.max(scores.values());
-        
-        // Find all players with max score
-        List<String> winners = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-            if (entry.getValue() == maxScore) {
-                winners.add(entry.getKey());
+        private void determineWinners(Map<String, Integer> scores) {
+            if (scores.isEmpty()) {
+                winnerArea.setText("لا يوجد لاعبون في النتائج النهائية");
+                return;
             }
-        }
 
-        // Prepare the results text
-        StringBuilder sb = new StringBuilder();
-        sb.append("النتائج النهائية:\n\n");
-        
-        // Sort players by score (descending)
-        List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-        sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-
-        // Display all players' scores
-        for (Map.Entry<String, Integer> entry : sortedEntries) {
-            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-        }
-
-        sb.append("\n");
-
-        // Determine and display winner(s)
-        if (winners.size() == scores.size() && winners.size() > 1) {
-            sb.append("لا يوجد فائز! جميع اللاعبين لديهم نفس النتيجة");
-        } else if (winners.size() == 1) {
-            sb.append("الفائزة : ").append(winners.get(0)).append("!");
-        } else {
-            sb.append("الفائزات :\n");
-            for (String winner : winners) {
-                sb.append(winner).append("\n");
-            }
-        }
-
-        winnerArea.setText(sb.toString());
-
-        // Highlight winners in the text
-        for (String winner : winners) {
-            highlightText(winner);
-        }
-    }
-
-    private void highlightText(String textToHighlight) {
-        String content = winnerArea.getText();
-        int start = content.indexOf(textToHighlight);
-        while (start >= 0) {
-            int end = start + textToHighlight.length();
-            winnerArea.setSelectionStart(start);
-            winnerArea.setSelectionEnd(end);
-            winnerArea.replaceSelection(textToHighlight);  // Correct            winnerArea.select(start, end);
-            winnerArea.setSelectionColor(Color.YELLOW);
-            winnerArea.setSelectionStart(end);
-            winnerArea.setSelectionEnd(end);
-            start = content.indexOf(textToHighlight, end);
-        }
-    }
-}
- public void updateTotalGameTimer(int timeLeft) {
-            SwingUtilities.invokeLater(() -> {
-                int minutes = timeLeft / 60;
-                int seconds = timeLeft % 60;
-                String timeText = String.format("الوقت المتبقي للعبة: %02d:%02d", minutes, seconds);
-                totalGameTimerLabel.setText(timeText);
-                
-                if (timeLeft <= 30) {
-                    totalGameTimerLabel.setForeground(Color.RED);
+            int maxScore = Collections.max(scores.values());
+            List<String> winners = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : scores.entrySet()) {
+                if (entry.getValue() == maxScore) {
+                    winners.add(entry.getKey());
                 }
-            });
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("النتائج النهائية:\n\n");
+            
+            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
+            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+
+            for (Map.Entry<String, Integer> entry : sortedEntries) {
+                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+            }
+
+            sb.append("\n");
+
+            if (winners.size() == scores.size() && winners.size() > 1) {
+                sb.append("لا يوجد فائز! جميع اللاعبين لديهم نفس النتيجة");
+            } else if (winners.size() == 1) {
+                sb.append("الفائزة : ").append(winners.get(0)).append("!");
+            } else {
+                sb.append("الفائزات :\n");
+                for (String winner : winners) {
+                    sb.append(winner).append("\n");
+                }
+            }
+
+            winnerArea.setText(sb.toString());
+
+            for (String winner : winners) {
+                highlightText(winner);
+            }
         }
-    
+
+        private void highlightText(String textToHighlight) {
+            String content = winnerArea.getText();
+            int start = content.indexOf(textToHighlight);
+            while (start >= 0) {
+                int end = start + textToHighlight.length();
+                winnerArea.setSelectionStart(start);
+                winnerArea.setSelectionEnd(end);
+                winnerArea.replaceSelection(textToHighlight);
+                winnerArea.setSelectionColor(Color.YELLOW);
+                winnerArea.setSelectionStart(end);
+                winnerArea.setSelectionEnd(end);
+                start = content.indexOf(textToHighlight, end);
+            }
+        }
+    }
+
+    public void updateTotalGameTimer(int timeLeft) {
+        SwingUtilities.invokeLater(() -> {
+            int minutes = timeLeft / 60;
+            int seconds = timeLeft % 60;
+            String timeText = String.format("الوقت المتبقي للعبة: %02d:%02d", minutes, seconds);
+            totalGameTimerLabel.setText(timeText);
+            
+            if (timeLeft <= 30) {
+                totalGameTimerLabel.setForeground(Color.RED);
+            }
+        });
+    }
+
     private void showWarning(String message) {
-    SwingUtilities.invokeLater(() -> {
-        JOptionPane.showMessageDialog(this, message, "تحذير", JOptionPane.WARNING_MESSAGE);
-    });
-}
-    
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, message, "تحذير", JOptionPane.WARNING_MESSAGE);
+        });
+    }
 }
