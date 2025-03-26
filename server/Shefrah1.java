@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah1 {
+public class Shefrah2 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -16,8 +16,11 @@ public class Shefrah1 {
         "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
     );
     private static final List<Integer> answers = Arrays.asList(
-        25, 15, 30, 40, 35, 5, 45, 50, 20, 10, 65, 55, 30, 25, 10
+       15, 5, 2, 3, 12, 6, 7, 5, 10, 0, 0, 0, 0, 0, 0
     );
+    private static final int TOTAL_GAME_TIME = 120; // 120 ثانية = دقيقتين
+    private static int remainingGameTime = TOTAL_GAME_TIME;
+    private static Timer totalGameTimer; 
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
@@ -91,6 +94,10 @@ public class Shefrah1 {
         }
 
         private void handleAnswer(String answer) {
+                if (remainingGameTime <= 0) {
+        out.println("GameOver:Time's up! final scores:" + getFinalScores());
+        return;
+    }
             try {
                 int playerAnswer = Integer.parseInt(answer);
                 int currentLevel;
@@ -99,8 +106,7 @@ public class Shefrah1 {
                 }
                 
                 if (currentLevel >= answers.size()) {
-                    out.println("GameOver: Your final score: " + playerScores.get(playerName));
-                    return;
+             out.println("GameOver: Your final score: " + playerScores.get(playerName) + " final scores:" + getFinalScores());                    return;
                 }
                 
                 int correctAnswer = answers.get(currentLevel);
@@ -128,7 +134,8 @@ public class Shefrah1 {
             } catch (Exception e) {
                 out.println("Error: Invalid answer format.");
             }
-        }
+}
+        
 
         private void removePlayer() {
             synchronized (waitingRoom) {
@@ -152,6 +159,10 @@ public class Shefrah1 {
             } catch (IOException e) {
                 System.out.println("Error closing socket for " + playerName);
             }
+              // إذا لم يعد هناك لاعبون، أوقف التايمر
+    if (waitingRoom.isEmpty() && totalGameTimer != null) {
+        totalGameTimer.cancel();
+    }
         }
 
         public void sendMessage(String message) {
@@ -247,6 +258,53 @@ public class Shefrah1 {
                     client.sendMessage("StayInWaitingRoom");
                 }
             }
+            startTotalGameTimer();
         }
     }
+    private static String getFinalScores() {
+    StringBuilder sb = new StringBuilder();
+    synchronized (playerScores) {
+        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            if (waitingPlayers.contains(entry.getKey())) { // Only include players who stayed
+                sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+            }
+        }
+    }
+    if (sb.length() > 0) {
+        sb.setLength(sb.length() - 1); // Remove trailing comma
+    }
+    return sb.toString();
+}
+    private static void startTotalGameTimer() {
+    remainingGameTime = TOTAL_GAME_TIME;
+    totalGameTimer = new Timer();
+    totalGameTimer.scheduleAtFixedRate(new TimerTask() {
+        @Override
+        public void run() {
+            if (remainingGameTime <= 0) {
+                endGameByTime();
+                totalGameTimer.cancel();
+                return;
+            }
+            
+            broadcastMessage("TotalGameTimer:" + remainingGameTime);
+            remainingGameTime--;
+            
+            // تحذير عند 30 ثانية المتبقية
+            if (remainingGameTime == 30) {
+                broadcastMessage("Warning:30 seconds remaining!");
+            }
+        }
+    }, 0, 1000); // تحديث كل ثانية
+}
+    private static void endGameByTime() {
+    broadcastMessage("GameOver:Time's up! final scores:" + getFinalScores());
+    
+    // إعادة تعيين اللعبة
+    synchronized (waitingPlayers) {
+        waitingPlayers.clear();
+    }
+    countdown = 30;
+    timerRunning = false;
+}
 }
