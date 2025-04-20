@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah1 {
+public class Shefrah2 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -156,6 +156,17 @@ public class Shefrah1 {
             synchronized (playerLevels) {
                 playerLevels.remove(playerName);
             }
+              synchronized (playerLevels) {
+                 if (waitingPlayers.size() == 1) {
+            String lastPlayer = waitingPlayers.get(0);
+            for (ClientHandler client : waitingRoom) {
+                if (client.playerName.equals(lastPlayer)) {
+                    client.sendMessage("GameOver:All other players left. You win! final scores:" + getFinalScores());
+                }
+            }
+         
+        }
+            }
             broadcastScores();
             sendPlayersList();
             broadcastWaitingPlayers();
@@ -169,6 +180,7 @@ public class Shefrah1 {
     if (waitingRoom.isEmpty() && totalGameTimer != null) {
         totalGameTimer.cancel();
     }
+    
         }
 
         public void sendMessage(String message) {
