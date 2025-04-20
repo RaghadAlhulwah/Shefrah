@@ -316,6 +316,7 @@ public class ShClient1 extends JFrame {
         private JLabel errorMessageLabel;
         private JPanel topPanel;
         private JPanel centerPanel;
+        private JButton closeButton;
 
         public GameStartFrame(Socket socket, String imageName, String playerName, PrintWriter out) {
             this.playerName = playerName;
@@ -365,8 +366,10 @@ public class ShClient1 extends JFrame {
             JPanel inputPanel = new JPanel();
             textField = new JTextField(20);
             submitButton = new JButton("إرسال");
+            closeButton = new JButton ("خروج");
             inputPanel.add(textField);
             inputPanel.add(submitButton);
+            inputPanel.add(closeButton);
             add(inputPanel, BorderLayout.SOUTH);
 
             // إجراءات الزر
@@ -377,6 +380,8 @@ public class ShClient1 extends JFrame {
                     textField.setText("");
                 }
             });
+            
+            closeButton.addActionListener(e -> System.exit(0));
         }
 
         public void showErrorMessage(String message) {
