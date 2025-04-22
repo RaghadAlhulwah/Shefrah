@@ -148,8 +148,8 @@ public class ShClient1 extends JFrame {
                 } else if (serverMessage.startsWith("GameStart:")) {
                     openGameStartFrame(serverMessage.substring(10));
                 } else if (serverMessage.startsWith("SCORES:")) {
-                    updateScoreboard(serverMessage.substring(7));
-                } else if (serverMessage.startsWith("NextRound:")) {
+    updateScoreboard(serverMessage.substring(7));
+} else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
                 } else if (serverMessage.startsWith("GameOver:")) {
                     showGameOver(serverMessage.substring(9));
@@ -162,7 +162,7 @@ public class ShClient1 extends JFrame {
                         }
                     }
                 } else if (serverMessage.startsWith("Warning:")) {
-                    showWarning(serverMessage.substring(8));
+                    updateTotalGameTimer(30);
                 }
             }
         } catch (IOException e) {
@@ -197,19 +197,20 @@ public class ShClient1 extends JFrame {
                 if (window instanceof ReadyPlayersFrame) {
                     ((ReadyPlayersFrame) window).updateTimer(timeLeft);
                 }
+
             }
         });
     }
 
     private void updateScoreboard(String scoresData) {
-        SwingUtilities.invokeLater(() -> {
-            for (Window window : Window.getWindows()) {
-                if (window instanceof GameStartFrame) {
-                    ((GameStartFrame) window).updateScoreboard(scoresData);
-                }
+    SwingUtilities.invokeLater(() -> {
+        for (Window window : Window.getWindows()) {
+            if (window instanceof GameStartFrame) {
+                ((GameStartFrame) window).updateScoreboard(scoresData);
             }
-        });
-    }
+        }
+    });
+}
 
     private void updateCurrentImage(String imageName) {
         SwingUtilities.invokeLater(() -> {
@@ -224,6 +225,7 @@ public class ShClient1 extends JFrame {
     private void showGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
             Map<String, Integer> finalScores = new HashMap<>();
+           
             if (message.contains("final scores:")) {
                 String scoresPart = message.substring(message.indexOf("final scores:") + 13);
                 String[] playerEntries = scoresPart.split(",");
@@ -256,15 +258,30 @@ public class ShClient1 extends JFrame {
     }
 
     private void openGameStartFrame(String imageName) {
-        SwingUtilities.invokeLater(() -> {
-            new GameStartFrame(socket, imageName, playerName, out).setVisible(true);
-            for (Window window : Window.getWindows()) {
-                if (window instanceof ReadyPlayersFrame) {
-                    window.dispose();
-                }
+    SwingUtilities.invokeLater(() -> {
+        GameStartFrame frame = new GameStartFrame(socket, imageName, playerName, out);
+        frame.setVisible(true);
+        
+        // إظهار النقاط الأولية فورًا
+        frame.updateScoreboard(getInitialScores()); 
+        
+        for (Window window : Window.getWindows()) {
+            if (window instanceof ReadyPlayersFrame) {
+                window.dispose();
             }
-        });
-    }
+        }
+    });
+}
+
+// دالة مساعدة جديدة
+private String getInitialScores() {
+    return "SCORES:" + String.join(",", 
+        playerName + ":0",
+        "لاعب2:0",
+        "لاعب3:0",
+        "لاعب4:0"
+    ).replace("لاعب", "في انتظار");
+}
 
     static class ReadyPlayersFrame extends JFrame {
         private JTextArea readyPlayersArea;
@@ -383,7 +400,27 @@ public class ShClient1 extends JFrame {
             
             closeButton.addActionListener(e -> System.exit(0));
         }
+        
+        public void updateScoreboard(String scoresData) {
+    SwingUtilities.invokeLater(() -> {
+        // مسح جميع النقاط أولاً
+        for (JLabel label : playerScoreLabels) {
+            label.setText("");
+        }
 
+        // إذا كانت البيانات فارغة، توقفي هنا
+        if (scoresData.isEmpty()) return;
+
+        // تحديث النقاط الجديدة
+        String[] players = scoresData.split(",");
+        for (int i = 0; i < Math.min(players.length, playerScoreLabels.length); i++) {
+            String[] parts = players[i].split(":");
+            if (parts.length == 2) {
+                playerScoreLabels[i].setText(parts[0] + ": " + parts[1] + " نقطة");
+            }
+        }
+    });
+}
         public void showErrorMessage(String message) {
             SwingUtilities.invokeLater(() -> {
                 errorMessageLabel.setText(message);
@@ -404,18 +441,17 @@ public class ShClient1 extends JFrame {
         }
 
         private void initScoreboard() {
-            scoreboardPanel = new JPanel();
-            scoreboardPanel.setLayout(new BoxLayout(scoreboardPanel, BoxLayout.Y_AXIS));
-            scoreboardPanel.setBorder(BorderFactory.createTitledBorder("نتائج اللاعبين"));
-            scoreboardPanel.setPreferredSize(new Dimension(200, 150));
-
-            for (int i = 0; i < 4; i++) {
-                playerScoreLabels[i] = new JLabel("");
-                playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
-                playerScoreLabels[i].setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
-                scoreboardPanel.add(playerScoreLabels[i]);
-            }
-        }
+    scoreboardPanel = new JPanel();
+    scoreboardPanel.setLayout(new BoxLayout(scoreboardPanel, BoxLayout.Y_AXIS));
+    scoreboardPanel.setBorder(BorderFactory.createTitledBorder("نتائج اللاعبين"));
+    
+    
+    for (int i = 0; i < 4; i++) {
+        playerScoreLabels[i] = new JLabel(" ");
+        playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
+        scoreboardPanel.add(playerScoreLabels[i]);
+    }
+}
 
         public void updateImage(String imageName) {
             SwingUtilities.invokeLater(() -> {
@@ -434,31 +470,6 @@ public class ShClient1 extends JFrame {
             });
         }
 
-        public void updateScoreboard(String scoresData) {
-            SwingUtilities.invokeLater(() -> {
-                for (JLabel label : playerScoreLabels) {
-                    label.setText("");
-                }
-
-                String[] players = scoresData.split(",");
-                for (int i = 0; i < Math.min(players.length, 4); i++) {
-                    String[] parts = players[i].split(":");
-                    if (parts.length == 2) {
-                        String name = parts[0];
-                        String score = parts[1];
-                        
-                        String displayText = name + ": " + score + " نقطة";
-                        playerScoreLabels[i].setText(displayText);
-                        
-                        if (name.equals(playerName)) {
-                            playerScoreLabels[i].setFont(new Font("Arial", Font.BOLD, 14));
-                        } else {
-                            playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
-                        }
-                    }
-                }
-            });
-        }
     }
 
     static class WinnerFrame extends JFrame {
@@ -559,9 +570,5 @@ public class ShClient1 extends JFrame {
         });
     }
 
-    private void showWarning(String message) {
-        SwingUtilities.invokeLater(() -> {
-            JOptionPane.showMessageDialog(this, message, "تحذير", JOptionPane.WARNING_MESSAGE);
-        });
-    }
+    
 }
