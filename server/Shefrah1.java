@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -189,17 +189,20 @@ public class Shefrah2 {
     }
 
     private static void broadcastScores() {
-        StringBuilder sb = new StringBuilder("SCORES:");
-        synchronized (playerScores) {
-            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+    StringBuilder sb = new StringBuilder("SCORES:");
+    synchronized (playerScores) {
+        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+            // عرض النقاط فقط للاعبين في قائمة waitingPlayers
+            if (waitingPlayers.contains(entry.getKey())) {
                 sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
             }
         }
-        if (sb.length() > 7) {
-            sb.setLength(sb.length() - 1);
-        }
-        broadcastMessage(sb.toString());
     }
+    if (sb.length() > 7) {
+        sb.setLength(sb.length() - 1); // Remove trailing comma
+    }
+    broadcastMessage(sb.toString());
+}
 
     private static void sendPlayersList() {
         String players = "Players:" + String.join(",", getPlayerNames());
@@ -254,31 +257,54 @@ public class Shefrah2 {
     }
 
     private static void checkAndStartGame() {
-        if (waitingPlayers.size() >= 4 || (timerRunning && countdown <= 0)) {
-            if (gameTimer != null) {
-                gameTimer.cancel();
-            }
-            timerRunning = false;
-            countdown = 30;
-            System.out.println("Game started!");
-
-            // Initialize player levels for the game
-            synchronized (playerLevels) {
-                for (String player : waitingPlayers) {
-                    playerLevels.put(player, 0);
-                }
-            }
-
-            for (ClientHandler client : waitingRoom) {
-                if (waitingPlayers.contains(client.playerName)) {
-                    client.sendMessage("GameStart:" + picName.get(0));
-                } else {
-                    client.sendMessage("StayInWaitingRoom");
-                }
-            }
-            startTotalGameTimer();
+    if (waitingPlayers.size() >= 4 || (timerRunning && countdown <= 0)) {
+        if (gameTimer != null) {
+            gameTimer.cancel();
         }
+        timerRunning = false;
+        countdown = 30;
+        System.out.println("Game started!");
+
+        // Initialize player levels and scores for the game
+        synchronized (playerLevels) {
+            for (String player : waitingPlayers) {
+                playerLevels.put(player, 0);
+            }
+        }
+        synchronized (playerScores) {
+            for (String player : waitingPlayers) {
+                playerScores.put(player, 0);
+                broadcastScores(); // إرسال النقاط الأولية فورًا
+                System.out.println("تم إرسال النقاط الأولية للاعب: " + player); // للتتبع
+            }
+        }
+        
+        String initialScores = "SCORES:" + String.join(",", 
+    waitingPlayers.stream()
+        .map(p -> p + ":0")
+        .toArray(String[]::new)
+);
+broadcastMessage(initialScores);
+System.out.println("تم إرسال النقاط الأولية: " + initialScores);
+
+        // إرسال قائمة اللاعبين الجدد مع بدء اللعبة
+        broadcastScores();
+        
+        
+        for (ClientHandler client : waitingRoom) {
+            if (waitingPlayers.contains(client.playerName)) {
+                client.sendMessage("GameStart:" + picName.get(0));
+            } else {
+                client.sendMessage("StayInWaitingRoom");
+                // إعادة تعيين النقاط للاعبين الذين لم ينضموا للعبة
+                synchronized (playerScores) {
+                    playerScores.put(client.playerName, 0);
+                }
+            }
+        }
+        startTotalGameTimer();
     }
+}
     private static String getFinalScores() {
     StringBuilder sb = new StringBuilder();
     synchronized (playerScores) {
