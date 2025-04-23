@@ -150,6 +150,7 @@ public class ShClient extends JFrame {
     updateScoreboard(serverMessage.substring(7));
 } else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
+                    
                 } else if (serverMessage.startsWith("GameOver:")) {
                     showGameOver(serverMessage.substring(9));
                 } else if (serverMessage.startsWith("TotalGameTimer:")) {
@@ -221,7 +222,7 @@ public class ShClient extends JFrame {
         });
     }
 
-    private void showGameOver(String message) {
+    /*private void showGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
             Map<String, Integer> finalScores = new HashMap<>();
            
@@ -246,7 +247,33 @@ public class ShClient extends JFrame {
 
             new WinnerFrame(finalScores).setVisible(true);
         });
-    }
+    }*/
+    private void showGameOver(String message) {
+    SwingUtilities.invokeLater(() -> {
+        Map<String, Integer> finalScores = new HashMap<>();
+       
+        if (message.contains("final scores:")) {
+            String scoresPart = message.substring(message.indexOf("final scores:") + 13);
+            String[] playerEntries = scoresPart.split(",");
+            for (String entry : playerEntries) {
+                String[] parts = entry.split(":");
+                if (parts.length == 2) {
+                    try {
+                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        for (Window window : Window.getWindows()) {
+            window.dispose();
+        }
+
+        new WinnerFrame(finalScores).setVisible(true);
+    });
+}
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -537,15 +564,16 @@ private String getPlayerListFromServer() {
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append("النتائج النهائية:\n\n");
-            
-            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+            //هنا تعدل
+      sb.append("النتائج النهائية:\n\n");
+    
+    List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
+    sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
 
-            for (Map.Entry<String, Integer> entry : sortedEntries) {
-                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-            }
-
+    for (Map.Entry<String, Integer> entry : sortedEntries) {
+        sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+    }
+//الى هنا
             sb.append("\n");
 
             if (winners.size() == scores.size() && winners.size() > 1) {
