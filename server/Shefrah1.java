@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah1 {
+public class Shefrah2 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -13,7 +13,7 @@ public class Shefrah1 {
     private static final List<String> picName = Arrays.asList(
         "pic1", "pic2", "pic3", "pic4", "pic5", 
         "pic6", "pic7", "pic8", "pic9",
-        "pic10", "pic11", "pic12", "pic13", "pic14", "pic15"
+        "pic10", "pic11", "pic12", "pic13", "pic14"
     );
     private static final List<Integer> answers = Arrays.asList(
        15, 5, 2, 3, 12, 6, 7, 5, 10, 0, 0, 0, 0, 0, 0
@@ -84,6 +84,21 @@ public class Shefrah1 {
                         checkAndStartGame();
                     } else if (message.startsWith("answer:")) {
                         handleAnswer(message.substring(7));
+                    } else if (message.equals("GET_PLAYERS")) {
+                        // إرسال قائمة اللاعبين عند الطلب
+                        out.println("PLAYERS:" + String.join(",", getPlayerNames()));
+                    } else if (message.equals("GET_PLAYERS_FOR_SCOREBOARD")) {
+                        // إرسال قائمة اللاعبين مع النقاط للوحة النتائج
+                        StringBuilder sb = new StringBuilder("SCORES:");
+                        synchronized (playerScores) {
+                            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
+                                sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+                            }
+                        }
+                        if (sb.length() > 7) {
+                            sb.setLength(sb.length() - 1);
+                        }
+                        out.println(sb.toString());
                     }
                 }
             } catch (IOException e) {
@@ -274,11 +289,13 @@ public class Shefrah1 {
         synchronized (playerScores) {
             for (String player : waitingPlayers) {
                 playerScores.put(player, 0);
-                broadcastScores(); // إرسال النقاط الأولية فورًا
-                System.out.println("تم إرسال النقاط الأولية للاعب: " + player); // للتتبع
+              /*  broadcastScores(); // إرسال النقاط الأولية فورًا
+                System.out.println("تم إرسال النقاط الأولية للاعب: " + player); // للتتبع */
             }
         }
-        
+        // إرسال النقاط الأولية للجميع
+            broadcastScores();
+
         String initialScores = "SCORES:" + String.join(",", 
     waitingPlayers.stream()
         .map(p -> p + ":0")
@@ -291,20 +308,27 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
         broadcastScores();
         
         
-        for (ClientHandler client : waitingRoom) {
-            if (waitingPlayers.contains(client.playerName)) {
-                client.sendMessage("GameStart:" + picName.get(0));
-            } else {
-                client.sendMessage("StayInWaitingRoom");
-                // إعادة تعيين النقاط للاعبين الذين لم ينضموا للعبة
-                synchronized (playerScores) {
-                    playerScores.put(client.playerName, 0);
+     for (ClientHandler client : waitingRoom) {
+                if (waitingPlayers.contains(client.playerName)) {
+                    client.sendMessage("GameStart:" + picName.get(0));
+                    // إرسال النتائج الأولية مباشرة لكل لاعب
+                    StringBuilder sb = new StringBuilder("SCORES:");
+                    synchronized (playerScores) {
+                        for (String player : waitingPlayers) {
+                            sb.append(player).append(":0,");
+                        }
+                    }
+                    if (sb.length() > 7) {
+                        sb.setLength(sb.length() - 1);
+                    }
+                    client.sendMessage(sb.toString());
+                } else {
+                    client.sendMessage("StayInWaitingRoom");
                 }
             }
+            startTotalGameTimer();
         }
-        startTotalGameTimer();
-    }
-}
+    }//تغيرت الميثود
     private static String getFinalScores() {
     StringBuilder sb = new StringBuilder();
     synchronized (playerScores) {
