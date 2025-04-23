@@ -141,12 +141,14 @@ public class Shefrah2 {
                     
                     out.println("Correct!");
                     
-                    if (currentLevel + 1 < picName.size()) {
-                        out.println("NextRound:" + picName.get(currentLevel + 1));
-                    } else {
-                        out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
-                                  " final scores:" + getFinalScores());
-                    }
+                   if (currentLevel + 1 < picName.size()) {
+    out.println("NextRound:" + picName.get(currentLevel + 1));
+} else {
+    // Player has completed the last level → End the game with a winner
+    broadcastMessage("GameOver:Winner! " + playerName + " wins with score: " 
+                    + playerScores.get(playerName) + " Final scores: " + getFinalScores());
+    endGame(); // Stop timer and reset game
+}
                 } else {
                     // إرسال رسالة WrongAnswer للعميل
                     out.println("WrongAnswer");
@@ -329,6 +331,7 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
             startTotalGameTimer();
         }
     }//تغيرت الميثود
+    
     private static String getFinalScores() {
     StringBuilder sb = new StringBuilder();
     synchronized (playerScores) {
@@ -365,14 +368,20 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
         }
     }, 0, 1000); // تحديث كل ثانية
 }
-    private static void endGameByTime() {
-    broadcastMessage("GameOver:Time's up! final scores:" + getFinalScores());
     
-    // إعادة تعيين اللعبة
+private static void endGameByTime() {
+    broadcastMessage("GameOver:Time's up! Final scores: " + getFinalScores());
+    endGame(); // Reuse the same cleanup method
+}
+    private static void endGame() {
+    // Stop the timer if running
+    timerRunning = false;
+    countdown = 30; // Reset for next game
+    
+    // Clear waiting players
     synchronized (waitingPlayers) {
         waitingPlayers.clear();
     }
-    countdown = 30;
-    timerRunning = false;
 }
+         
 }
