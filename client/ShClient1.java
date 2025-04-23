@@ -17,7 +17,7 @@ import javax.swing.text.*;
 import javax.swing.Timer;
 import java.util.Map.Entry;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
@@ -27,15 +27,14 @@ public class ShClient1 extends JFrame {
         picMap.put("pic4", "/shefrah2/imgSh5.jpg");
         picMap.put("pic5", "/shefrah2/imgSh6.jpg");
         picMap.put("pic6", "/shefrah2/imgSh7.jpg");
-        picMap.put("pic7", "/shefrah2/imgSh8.png");
-        picMap.put("pic8", "/shefrah2/imgSh9.png");
-        picMap.put("pic9", "/shefrah2/imgSh10.png");
-        picMap.put("pic10", "/shefrah2/imgSh11.png");
-        picMap.put("pic11", "/shefrah2/imgSh12.png");
-        picMap.put("pic12", "/shefrah2/imgSh13.png");
-        picMap.put("pic13", "/shefrah2/imgSh14.png");
-        picMap.put("pic14", "/shefrah2/imgSh15.png");
-        picMap.put("pic15", "/shefrah2/imgSh16.png");
+        picMap.put("pic7", "/shefrah2/imgSh8.jpg");
+        picMap.put("pic8", "/shefrah2/imgSh9.jpg");
+        picMap.put("pic9", "/shefrah2/imgSh10.jpg");
+        picMap.put("pic10", "/shefrah2/imgSh11.jpg");
+        picMap.put("pic11", "/shefrah2/imgSh12.jpg");
+        picMap.put("pic12", "/shefrah2/imgSh13.jpg");
+        picMap.put("pic13", "/shefrah2/imgSh14.jpg");
+        picMap.put("pic14", "/shefrah2/imgSh15.jpg");
     }
 
     private static JLabel totalGameTimerLabel;
@@ -83,7 +82,7 @@ public class ShClient1 extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient1(socket, playerName).setVisible(true);
+                new ShClient(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -96,7 +95,7 @@ public class ShClient1 extends JFrame {
     private BufferedReader in;
     private String playerName;
 
-    public ShClient1(Socket socket, String playerName) throws IOException {
+    public ShClient(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -262,8 +261,9 @@ public class ShClient1 extends JFrame {
         GameStartFrame frame = new GameStartFrame(socket, imageName, playerName, out);
         frame.setVisible(true);
         
-        // إظهار النقاط الأولية فورًا
-        frame.updateScoreboard(getInitialScores()); 
+         // الحصول على قائمة اللاعبين من السيرفر بدلاً من القيم الافتراضية
+        String playersList = getPlayerListFromServer();
+        frame.updateScoreboard("SCORES:" + createInitialScores(playersList));
         
         for (Window window : Window.getWindows()) {
             if (window instanceof ReadyPlayersFrame) {
@@ -271,16 +271,39 @@ public class ShClient1 extends JFrame {
             }
         }
     });
+    
+}
+    
+    // دالة مساعدة لإنشاء النقاط الأولية
+private String createInitialScores(String playersList) {
+    StringBuilder scores = new StringBuilder();
+    String[] players = playersList.split(",");
+    
+    for (String player : players) {
+        if (!player.trim().isEmpty()) {
+            scores.append(player).append(":0,");
+        }
+    }
+    
+    // إزالة الفاصلة الأخيرة إذا وجدت
+    if (scores.length() > 0) {
+        scores.setLength(scores.length() - 1);
+    }
+    
+    return scores.toString();
 }
 
-// دالة مساعدة جديدة
-private String getInitialScores() {
-    return "SCORES:" + String.join(",", 
-        playerName + ":0",
-        "لاعب2:0",
-        "لاعب3:0",
-        "لاعب4:0"
-    ).replace("لاعب", "في انتظار");
+private String getPlayerListFromServer() {
+    try {
+        out.println("GET_PLAYERS"); // إرسال طلب للحصول على قائمة اللاعبين
+        String response = in.readLine();
+        if (response != null && response.startsWith("PLAYERS:")) {
+            return response.substring(8); // استخراج قائمة اللاعبين
+        }
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+    return playerName; // العودة باسم اللاعب الحالي فقط إذا فشل الاتصال
 }
 
     static class ReadyPlayersFrame extends JFrame {
@@ -408,15 +431,17 @@ private String getInitialScores() {
             label.setText("");
         }
 
-        // إذا كانت البيانات فارغة، توقفي هنا
-        if (scoresData.isEmpty()) return;
+        // إذا كانت البيانات فارغة، توقف هنا
+        if (scoresData == null || scoresData.isEmpty()) return;
 
-        // تحديث النقاط الجديدة
-        String[] players = scoresData.split(",");
-        for (int i = 0; i < Math.min(players.length, playerScoreLabels.length); i++) {
-            String[] parts = players[i].split(":");
+        // تقسيم البيانات وتحديث النقاط
+        String[] playerEntries = scoresData.split(",");
+        for (int i = 0; i < Math.min(playerEntries.length, playerScoreLabels.length); i++) {
+            String[] parts = playerEntries[i].split(":");
             if (parts.length == 2) {
-                playerScoreLabels[i].setText(parts[0] + ": " + parts[1] + " نقطة");
+                String playerName = parts[0];
+                String score = parts[1];
+                playerScoreLabels[i].setText(playerName + ": " + score + " نقطة");
             }
         }
     });
