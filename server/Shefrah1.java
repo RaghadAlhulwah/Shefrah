@@ -2,7 +2,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -16,8 +16,7 @@ public class Shefrah2 {
         "pic10", "pic11", "pic12", "pic13", "pic14"
     );
     private static final List<Integer> answers = Arrays.asList(
-       15, 5, 2, 3, 12, 6, 7, 5, 10, 0, 0, 0, 0, 0, 0
-    );
+       15, 5, 2, 3, 12, 6, 7, 5, 10, 0, 0, 0, 0, 0, 0);
     private static final int TOTAL_GAME_TIME = 120; // 120 ثانية = دقيقتين
     private static int remainingGameTime = TOTAL_GAME_TIME;
     private static Timer totalGameTimer; 
@@ -141,14 +140,12 @@ public class Shefrah2 {
                     
                     out.println("Correct!");
                     
-                   if (currentLevel + 1 < picName.size()) {
-    out.println("NextRound:" + picName.get(currentLevel + 1));
-} else {
-    // Player has completed the last level → End the game with a winner
-    broadcastMessage("GameOver:Winner! " + playerName + " wins with score: " 
-                    + playerScores.get(playerName) + " Final scores: " + getFinalScores());
-    endGame(); // Stop timer and reset game
-}
+                    if (currentLevel + 1 < picName.size()) {
+                        out.println("NextRound:" + picName.get(currentLevel + 1));
+                    } else {
+                        out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
+                                  " final scores:" + getFinalScores());
+                    }
                 } else {
                     // إرسال رسالة WrongAnswer للعميل
                     out.println("WrongAnswer");
@@ -331,7 +328,6 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
             startTotalGameTimer();
         }
     }//تغيرت الميثود
-    
     private static String getFinalScores() {
     StringBuilder sb = new StringBuilder();
     synchronized (playerScores) {
@@ -356,7 +352,8 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
                 endGameByTime();
                 totalGameTimer.cancel();
                 return;
-            }
+            }   
+                       
             
             broadcastMessage("TotalGameTimer:" + remainingGameTime);
             remainingGameTime--;
@@ -368,20 +365,19 @@ System.out.println("تم إرسال النقاط الأولية: " + initialScor
         }
     }, 0, 1000); // تحديث كل ثانية
 }
+    private static void endGameByTime() {
+    broadcastMessage("GameOver:Time's up! final scores:" + getFinalScores());
     
-private static void endGameByTime() {
-    broadcastMessage("GameOver:Time's up! Final scores: " + getFinalScores());
-    endGame(); // Reuse the same cleanup method
-}
-    private static void endGame() {
-    // Stop the timer if running
-    timerRunning = false;
-    countdown = 30; // Reset for next game
-    
-    // Clear waiting players
+    // إعادة تعيين اللعبة
     synchronized (waitingPlayers) {
         waitingPlayers.clear();
     }
+    countdown = 30;
+    timerRunning = false;
 }
-         
+    /*private static void endGameByWinning() {
+    broadcastMessage("Game Ended:You win! final scores:" + getFinalScores());
+    
+    timerRunning = false;
+}*/
 }
