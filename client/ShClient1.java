@@ -1,11 +1,9 @@
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import static java.awt.Color.white;
 import java.awt.Component;
 import java.awt.ComponentOrientation;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.MediaTracker;
@@ -18,10 +16,10 @@ import java.util.*;
 import javax.swing.text.*;
 import javax.swing.Timer;
 import java.util.Map.Entry;
-import java.awt.Font;
 
 public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
+    private static boolean gameStarted = false;
 
     static {
         picMap.put("pic1", "/shefrah2/imgSh2.jpg");
@@ -49,32 +47,15 @@ public class ShClient1 extends JFrame {
     static class NameInputFrame extends JFrame {
         private JTextField nameField;
         private JButton submitButton;
-        private JLabel imgfield;
-        private JPanel cPanel;
-        private JPanel panel;
-        private JPanel middlePanel;
 
         public NameInputFrame() {
-            
             setTitle("شفرة");
-            setSize(700, 600);
+            setSize(300, 150);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);            
-         
-            imgfield = new JLabel("", JLabel.CENTER);
-            ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
+            setLocationRelativeTo(null);
 
-            Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
-            imgfield.setIcon(new ImageIcon(scaledImage));
-            
-            panel = new JPanel(new BorderLayout(5,5));
-
-            cPanel = new JPanel(new BorderLayout());
-            cPanel.add(imgfield, BorderLayout.CENTER);
-            
             JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
-            prompt.setFont(new Font("Arial",Font.BOLD, 20));
             nameField = new JTextField(15);
 
             submitButton = new JButton("انضم");
@@ -85,20 +66,10 @@ public class ShClient1 extends JFrame {
 
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(submitButton);
-            
-            middlePanel = new JPanel();
-            middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));  
-            middlePanel.add(Box.createVerticalStrut(50));
-            JPanel promptPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));  
-            promptPanel.add(prompt);
-            middlePanel.add(promptPanel);
-            middlePanel.add(Box.createVerticalStrut(20));
-            middlePanel.add(inputPanel);
-            
-            add(cPanel, BorderLayout.PAGE_START);
-            add(middlePanel, BorderLayout.CENTER);
-            add(buttonPanel, BorderLayout.PAGE_END);
-           
+
+            add(prompt, BorderLayout.NORTH);
+            add(inputPanel, BorderLayout.CENTER);
+            add(buttonPanel, BorderLayout.SOUTH);
 
             setVisible(true);
         }
@@ -115,7 +86,7 @@ public class ShClient1 extends JFrame {
                 new ShClient1(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
-                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -156,50 +127,75 @@ public class ShClient1 extends JFrame {
         out.println(playerName);
 
         playButton.addActionListener(e -> {
+            if (!gameStarted) {
             out.println("play");
             openReadyPlayersFrame();
+            }
         });
 
         new Thread(() -> readServerMessages(connectedPlayers)).start();
     }
 
     private void readServerMessages(JTextArea connectedPlayers) {
-        try {
-            String serverMessage;
-            while ((serverMessage = in.readLine()) != null) {
-                System.out.println("Server: " + serverMessage);
-                if (serverMessage.startsWith("Players:")) {
-                    updateConnectedPlayers(connectedPlayers, serverMessage.substring(8).split(","));
-                } else if (serverMessage.startsWith("WaitingPlayers:")) {
-                    updateWaitingPlayers(serverMessage.substring(15).split(","));
-                } else if (serverMessage.startsWith("Timer:")) {
-                    updateTimer(Integer.parseInt(serverMessage.substring(6)));
-                } else if (serverMessage.startsWith("GameStart:")) {
+    try {
+        String serverMessage;
+        while ((serverMessage = in.readLine()) != null) {
+            System.out.println("Server: " + serverMessage);
+            
+             if (serverMessage.startsWith("GameStart:")) {
+                if (!gameStarted) {  // Only process if game isn't already started
+                    gameStarted = true;
                     openGameStartFrame(serverMessage.substring(10));
-                } else if (serverMessage.startsWith("SCORES:")) {
-    updateScoreboard(serverMessage.substring(7));
-} else if (serverMessage.startsWith("NextRound:")) {
-                    updateCurrentImage(serverMessage.substring(10));
-                } else if (serverMessage.startsWith("GameOver:")) {
-                    showGameOver(serverMessage.substring(9));
-                } else if (serverMessage.startsWith("Game Ended:")) {
-                    showGameOver(serverMessage.substring(9));
-                }  else if (serverMessage.startsWith("TotalGameTimer:")) {
-                    updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
-                } else if (serverMessage.startsWith("WrongAnswer")) {
+                }
+                continue;
+            }
+            else if (serverMessage.startsWith("GameOver:")) {
+                gameStarted = false;
+                showGameOver(serverMessage.substring(9));
+                continue;
+            }
+            
+            // Handle other message types
+            if (serverMessage.startsWith("Players:")) {
+                updateConnectedPlayers(connectedPlayers, serverMessage.substring(8).split(","));
+            } 
+            else if (serverMessage.startsWith("WaitingPlayers:")) {
+                updateWaitingPlayers(serverMessage.substring(15).split(","));
+            } 
+            else if (serverMessage.startsWith("Timer:")) {
+                updateTimer(Integer.parseInt(serverMessage.substring(6)));
+            } 
+            else if (serverMessage.startsWith("SCORES:")) {
+                updateScoreboard(serverMessage.substring(7));
+            } 
+            else if (serverMessage.startsWith("NextRound:")) {
+                updateCurrentImage(serverMessage.substring(10));
+            } 
+            else if (serverMessage.startsWith("TotalGameTimer:")) {
+                updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
+            } 
+            else if (serverMessage.startsWith("WrongAnswer")) {
+                SwingUtilities.invokeLater(() -> {
                     for (Window window : Window.getWindows()) {
                         if (window instanceof GameStartFrame) {
                             ((GameStartFrame) window).showErrorMessage("إجابة خاطئة");
                         }
                     }
-                } else if (serverMessage.startsWith("Warning:")) {
-                    updateTotalGameTimer(30);
-                }
+                });
+            } 
+            else if (serverMessage.startsWith("Warning:")) {
+                updateTotalGameTimer(30);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
+    } catch (IOException e) {
+        e.printStackTrace();
+        // Handle disconnection gracefully
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, "تم قطع الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
+        });
     }
+}
 
     private void updateConnectedPlayers(JTextArea connectedPlayers, String[] players) {
         SwingUtilities.invokeLater(() -> {
@@ -253,7 +249,7 @@ public class ShClient1 extends JFrame {
         });
     }
 
-    private void showGameOver(String message) {
+    /*private void showGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
             Map<String, Integer> finalScores = new HashMap<>();
            
@@ -278,7 +274,33 @@ public class ShClient1 extends JFrame {
 
             new WinnerFrame(finalScores).setVisible(true);
         });
-    }
+    }*/
+    private void showGameOver(String message) {
+    SwingUtilities.invokeLater(() -> {
+        Map<String, Integer> finalScores = new HashMap<>();
+       
+        if (message.contains("final scores:")) {
+            String scoresPart = message.substring(message.indexOf("final scores:") + 13);
+            String[] playerEntries = scoresPart.split(",");
+            for (String entry : playerEntries) {
+                String[] parts = entry.split(":");
+                if (parts.length == 2) {
+                    try {
+                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        for (Window window : Window.getWindows()) {
+            window.dispose();
+        }
+
+        new WinnerFrame(finalScores).setVisible(true);
+    });
+}
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -384,7 +406,7 @@ private String getPlayerListFromServer() {
         private PrintWriter out;
         private String playerName;
         private JPanel scoreboardPanel;
-        private JLabel[] playerScoreLabels = new JLabel[4];
+        private JLabel[] playerScoreLabels = new JLabel[5];
         private JLabel errorMessageLabel;
         private JPanel topPanel;
         private JPanel centerPanel;
@@ -503,7 +525,7 @@ private String getPlayerListFromServer() {
     scoreboardPanel.setBorder(BorderFactory.createTitledBorder("نتائج اللاعبين"));
     
     
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
         playerScoreLabels[i] = new JLabel(" ");
         playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
         scoreboardPanel.add(playerScoreLabels[i]);
@@ -569,15 +591,16 @@ private String getPlayerListFromServer() {
             }
 
             StringBuilder sb = new StringBuilder();
-            sb.append("النتائج النهائية:\n\n");
-            
-            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+            //هنا تعدل
+      sb.append("النتائج النهائية:\n\n");
+    
+    List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
+    sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
 
-            for (Map.Entry<String, Integer> entry : sortedEntries) {
-                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-            }
-
+    for (Map.Entry<String, Integer> entry : sortedEntries) {
+        sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+    }
+//الى هنا
             sb.append("\n");
 
             if (winners.size() == scores.size() && winners.size() > 1) {
