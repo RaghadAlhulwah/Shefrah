@@ -1,9 +1,11 @@
 import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import static java.awt.Color.white;
 import java.awt.Component;
 import java.awt.ComponentOrientation;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.MediaTracker;
@@ -16,8 +18,9 @@ import java.util.*;
 import javax.swing.text.*;
 import javax.swing.Timer;
 import java.util.Map.Entry;
+import java.awt.Font;
 
-public class ShClient extends JFrame {
+public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
@@ -46,15 +49,32 @@ public class ShClient extends JFrame {
     static class NameInputFrame extends JFrame {
         private JTextField nameField;
         private JButton submitButton;
+        private JLabel imgfield;
+        private JPanel cPanel;
+        private JPanel panel;
+        private JPanel middlePanel;
 
         public NameInputFrame() {
+            
             setTitle("شفرة");
-            setSize(300, 150);
+            setSize(700, 600);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
+            setLocationRelativeTo(null);            
+         
+            imgfield = new JLabel("", JLabel.CENTER);
+            ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
 
+            Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
+            imgfield.setIcon(new ImageIcon(scaledImage));
+            
+            panel = new JPanel(new BorderLayout(5,5));
+
+            cPanel = new JPanel(new BorderLayout());
+            cPanel.add(imgfield, BorderLayout.CENTER);
+            
             JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
+            prompt.setFont(new Font("Arial",Font.BOLD, 20));
             nameField = new JTextField(15);
 
             submitButton = new JButton("انضم");
@@ -65,10 +85,20 @@ public class ShClient extends JFrame {
 
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(submitButton);
-
-            add(prompt, BorderLayout.NORTH);
-            add(inputPanel, BorderLayout.CENTER);
-            add(buttonPanel, BorderLayout.SOUTH);
+            
+            middlePanel = new JPanel();
+            middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));  
+            middlePanel.add(Box.createVerticalStrut(50));
+            JPanel promptPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));  
+            promptPanel.add(prompt);
+            middlePanel.add(promptPanel);
+            middlePanel.add(Box.createVerticalStrut(20));
+            middlePanel.add(inputPanel);
+            
+            add(cPanel, BorderLayout.PAGE_START);
+            add(middlePanel, BorderLayout.CENTER);
+            add(buttonPanel, BorderLayout.PAGE_END);
+           
 
             setVisible(true);
         }
@@ -82,10 +112,10 @@ public class ShClient extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient(socket, playerName).setVisible(true);
+                new ShClient1(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
-                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالسيرفر", "خطأ", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -95,7 +125,7 @@ public class ShClient extends JFrame {
     private BufferedReader in;
     private String playerName;
 
-    public ShClient(Socket socket, String playerName) throws IOException {
+    public ShClient1(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -150,10 +180,11 @@ public class ShClient extends JFrame {
     updateScoreboard(serverMessage.substring(7));
 } else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
-                    
                 } else if (serverMessage.startsWith("GameOver:")) {
                     showGameOver(serverMessage.substring(9));
-                } else if (serverMessage.startsWith("TotalGameTimer:")) {
+                } else if (serverMessage.startsWith("Game Ended:")) {
+                    showGameOver(serverMessage.substring(9));
+                }  else if (serverMessage.startsWith("TotalGameTimer:")) {
                     updateTotalGameTimer(Integer.parseInt(serverMessage.substring(15)));
                 } else if (serverMessage.startsWith("WrongAnswer")) {
                     for (Window window : Window.getWindows()) {
@@ -222,7 +253,7 @@ public class ShClient extends JFrame {
         });
     }
 
-    /*private void showGameOver(String message) {
+    private void showGameOver(String message) {
         SwingUtilities.invokeLater(() -> {
             Map<String, Integer> finalScores = new HashMap<>();
            
@@ -247,33 +278,7 @@ public class ShClient extends JFrame {
 
             new WinnerFrame(finalScores).setVisible(true);
         });
-    }*/
-    private void showGameOver(String message) {
-    SwingUtilities.invokeLater(() -> {
-        Map<String, Integer> finalScores = new HashMap<>();
-       
-        if (message.contains("final scores:")) {
-            String scoresPart = message.substring(message.indexOf("final scores:") + 13);
-            String[] playerEntries = scoresPart.split(",");
-            for (String entry : playerEntries) {
-                String[] parts = entry.split(":");
-                if (parts.length == 2) {
-                    try {
-                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
-                    } catch (NumberFormatException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        for (Window window : Window.getWindows()) {
-            window.dispose();
-        }
-
-        new WinnerFrame(finalScores).setVisible(true);
-    });
-}
+    }
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -564,16 +569,15 @@ private String getPlayerListFromServer() {
             }
 
             StringBuilder sb = new StringBuilder();
-            //هنا تعدل
-      sb.append("النتائج النهائية:\n\n");
-    
-    List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-    sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+            sb.append("النتائج النهائية:\n\n");
+            
+            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
+            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
 
-    for (Map.Entry<String, Integer> entry : sortedEntries) {
-        sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-    }
-//الى هنا
+            for (Map.Entry<String, Integer> entry : sortedEntries) {
+                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+            }
+
             sb.append("\n");
 
             if (winners.size() == scores.size() && winners.size() > 1) {
