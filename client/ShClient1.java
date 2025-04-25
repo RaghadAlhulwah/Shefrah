@@ -17,8 +17,9 @@ import javax.swing.text.*;
 import javax.swing.Timer;
 import java.util.Map.Entry;
 import java.awt.FlowLayout;
+import java.util.stream.Collectors;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
@@ -61,7 +62,7 @@ public class ShClient1 extends JFrame {
             setLocationRelativeTo(null);            
          
             imgfield = new JLabel("", JLabel.CENTER);
-            ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
+            ImageIcon logo = new ImageIcon(getClass().getResource("/shefrah2/ShLOGO.png"));
 
             Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
             imgfield.setIcon(new ImageIcon(scaledImage));
@@ -110,7 +111,7 @@ public class ShClient1 extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient1(socket, playerName).setVisible(true);
+                new ShClient(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -124,7 +125,7 @@ public class ShClient1 extends JFrame {
     private String playerName;
     private final JButton playButton;
 
-    public ShClient1(Socket socket, String playerName) throws IOException {
+    public ShClient(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -264,32 +265,33 @@ public class ShClient1 extends JFrame {
         });
     }
 
-    private void showGameOver(String message) {
-        SwingUtilities.invokeLater(() -> {
-            Map<String, Integer> finalScores = new HashMap<>();
-           
-            if (message.contains("final scores:")) {
-                String scoresPart = message.substring(message.indexOf("final scores:") + 13);
-                String[] playerEntries = scoresPart.split(",");
-                for (String entry : playerEntries) {
-                    String[] parts = entry.split(":");
-                    if (parts.length == 2) {
-                        try {
-                            finalScores.put(parts[0], Integer.parseInt(parts[1]));
-                        } catch (NumberFormatException e) {
-                            e.printStackTrace();
-                        }
+private void showGameOver(String message) {
+    SwingUtilities.invokeLater(() -> {
+        Map<String, Integer> finalScores = new HashMap<>();
+        
+        // تحسين استخراج النتائج من الرسالة
+        String scoresPart = message.replaceAll(".*final scores:", "").trim();
+        if (!scoresPart.isEmpty()) {
+            String[] playerEntries = scoresPart.split(",");
+            for (String entry : playerEntries) {
+                String[] parts = entry.split(":");
+                if (parts.length == 2) {
+                    try {
+                        finalScores.put(parts[0], Integer.parseInt(parts[1]));
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
                     }
                 }
             }
+        }
 
-            for (Window window : Window.getWindows()) {
-                window.dispose();
-            }
+        for (Window window : Window.getWindows()) {
+            window.dispose();
+        }
 
-            new WinnerFrame(finalScores).setVisible(true);
-        });
-    }
+        new WinnerFrame(finalScores).setVisible(true);
+    });
+}
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -579,49 +581,44 @@ private String getPlayerListFromServer() {
             determineWinners(finalScores);
         }
 
-        private void determineWinners(Map<String, Integer> scores) {
-            if (scores.isEmpty()) {
-                winnerArea.setText("لا يوجد لاعبون في النتائج النهائية");
-                return;
-            }
+private void determineWinners(Map<String, Integer> scores) {
+    if (scores == null || scores.isEmpty()) {
+        winnerArea.setText("لا يوجد لاعبون في النتائج النهائية");
+        return;
+    }
 
-            int maxScore = Collections.max(scores.values());
-            List<String> winners = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-                if (entry.getValue() == maxScore) {
-                    winners.add(entry.getKey());
-                }
-            }
+    // فرز النتائج تنازلياً
+    List<Map.Entry<String, Integer>> sortedScores = new ArrayList<>(scores.entrySet());
+    sortedScores.sort((a, b) -> b.getValue().compareTo(a.getValue()));
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("النتائج النهائية:\n\n");
-            
-            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+    StringBuilder sb = new StringBuilder();
+    sb.append("النتائج النهائية:\n\n");
+    
+    // عرض جميع النتائج
+    for (Map.Entry<String, Integer> entry : sortedScores) {
+        sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+    }
+    
+    sb.append("\n");
 
-            for (Map.Entry<String, Integer> entry : sortedEntries) {
-                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-            }
+    // تحديد الفائز/الفائزين
+    if (sortedScores.size() > 0) {
+        int maxScore = sortedScores.get(0).getValue();
+        List<String> winners = sortedScores.stream()
+            .filter(e -> e.getValue() == maxScore)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
 
-            sb.append("\n");
-
-            if (winners.size() == scores.size() && winners.size() > 1) {
-                sb.append("لا يوجد فائز! جميع اللاعبين لديهم نفس النتيجة");
-            } else if (winners.size() == 1) {
-                sb.append("الفائزة : ").append(winners.get(0)).append("!");
-            } else {
-                sb.append("الفائزات :\n");
-                for (String winner : winners) {
-                    sb.append(winner).append("\n");
-                }
-            }
-
-            winnerArea.setText(sb.toString());
-
-            for (String winner : winners) {
-                highlightText(winner);
-            }
+        if (winners.size() == 1) {
+            sb.append("الفائز/الفائزة: ").append(winners.get(0)).append("!\n");
+        } else {
+            sb.append("تعادل بين:\n");
+            winners.forEach(winner -> sb.append(winner).append("\n"));
         }
+    }
+
+    winnerArea.setText(sb.toString());
+}
 
         private void highlightText(String textToHighlight) {
             String content = winnerArea.getText();
