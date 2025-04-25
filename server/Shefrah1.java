@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Shefrah1 {
+public class Shefrah2 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -16,7 +16,7 @@ public class Shefrah1 {
         "pic10", "pic11", "pic12", "pic13", "pic14"
     );
     private static final List<Integer> answers = Arrays.asList(
-       15, 5, 2, 3, 12, 6, 7, 5, 10, 0, 0, 0, 0, 0, 0
+       15, 5, 2, 12, 6, 3, 11, 11, 7, 5, 2, 10, 14, 57
     );
     private static final int TOTAL_GAME_TIME = 120; // 120 ثانية = دقيقتين
     private static int remainingGameTime = TOTAL_GAME_TIME;
