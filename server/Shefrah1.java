@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -12,8 +12,7 @@ public class Shefrah2 {
     private static final Map<String, Integer> playerScores = new HashMap<>();
     private static final Map<String, Integer> playerLevels = new HashMap<>();
     private static final List<String> picName = Arrays.asList(
-        "pic1", "pic2", "pic3", "pic4", "pic5", 
-        "pic6", "pic7", "pic8", "pic9",
+        "pic1", "pic2", "pic3", "pic4", "pic5", "pic6", "pic7", "pic8", "pic9",
         "pic10", "pic11", "pic12", "pic13", "pic14"
     );
     private static final List<Integer> answers = Arrays.asList(
@@ -76,20 +75,18 @@ public class Shefrah2 {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (message.equals("play")) {
-    synchronized (waitingPlayers) {
-        if (!gameStarted && !waitingPlayers.contains(playerName) && waitingPlayers.size() < 5) {
-            waitingPlayers.add(playerName);
-            startCountdownIfNeeded();
-        }
-    }
-    broadcastWaitingPlayers();
-}else if (message.startsWith("answer:")) {
+                        synchronized (waitingPlayers) {
+                            if (!gameStarted && !waitingPlayers.contains(playerName) && waitingPlayers.size() < 5) {
+                                waitingPlayers.add(playerName);
+                                startCountdownIfNeeded();
+                            }
+                        }
+                        broadcastWaitingPlayers();
+                    } else if (message.startsWith("answer:")) {
                         handleAnswer(message.substring(7));
                     } else if (message.equals("GET_PLAYERS")) {
-                        // إرسال قائمة اللاعبين عند الطلب
                         out.println("PLAYERS:" + String.join(",", getPlayerNames()));
                     } else if (message.equals("GET_PLAYERS_FOR_SCOREBOARD")) {
-                        // إرسال قائمة اللاعبين مع النقاط للوحة النتائج
                         StringBuilder sb = new StringBuilder("SCORES:");
                         synchronized (playerScores) {
                             for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
@@ -111,7 +108,9 @@ public class Shefrah2 {
 
         private void handleAnswer(String answer) {
             if (remainingGameTime <= 0) {
-                out.println("GameOver:Time's up! final scores:" + getFinalScores());
+                String finalScores = getFinalScores();
+                System.out.println("Final scores at time out: " + finalScores);
+                out.println("GameOver:Time's up! Final scores:" + finalScores);
                 return;
             }
             
@@ -121,10 +120,12 @@ public class Shefrah2 {
                 synchronized (playerLevels) {
                     currentLevel = playerLevels.get(playerName);
                 }
-               if (currentLevel >= answers.size()) {
-                 out.println("GameOver:final scores:" + getFinalScores());
-                   /* out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
-                          " final scores:" + getFinalScores()); */
+                
+                if (currentLevel >= answers.size()) {
+                    String finalScores = getFinalScores();
+                    System.out.println("Final scores for player completion: " + finalScores);
+                    out.println("GameOver:Your final score: " + playerScores.get(playerName) + 
+                                " Final scores:" + finalScores);
                     return;
                 }
                 
@@ -142,16 +143,18 @@ public class Shefrah2 {
                     
                     out.println("Correct!");
                     
-                   if (currentLevel + 1 < picName.size()) {
-    out.println("NextRound:" + picName.get(currentLevel + 1));
-} else {
-    // Player has completed the last level → End the game with a winner
-    broadcastMessage("GameOver:Winner! " + playerName + " wins with score: " 
-                    + playerScores.get(playerName) + " Final scores: " + getFinalScores());
-    endGame(); // Stop timer and reset game
-}
+                    if (currentLevel + 1 < picName.size()) {
+                        out.println("NextRound:" + picName.get(currentLevel + 1));
+                    } else {
+                        String finalScores = getFinalScores();
+                        System.out.println("Final scores for winner: " + finalScores);
+                        String message = finalScores.isEmpty() 
+                            ? "GameOver:Winner! " + playerName + " wins with score: " + playerScores.get(playerName) + " No scores available"
+                            : "GameOver:Winner! " + playerName + " wins with score: " + playerScores.get(playerName) + " Final scores:" + finalScores;
+                        broadcastMessage(message);
+                        endGame();
+                    }
                 } else {
-                    // إرسال رسالة WrongAnswer للعميل
                     out.println("WrongAnswer");
                     out.println("Incorrect! Try again.");
                 }
@@ -159,7 +162,6 @@ public class Shefrah2 {
                 out.println("Error: Invalid answer format.");
             }
         }
-        
 
         private void removePlayer() {
             synchronized (waitingRoom) {
@@ -168,23 +170,25 @@ public class Shefrah2 {
             synchronized (waitingPlayers) {
                 waitingPlayers.remove(playerName);
             }
-            synchronized (playerScores) {
-                playerScores.remove(playerName);
-            }
-            synchronized (playerLevels) {
-                playerLevels.remove(playerName);
-            }
-              synchronized (playerLevels) {
-                 if (waitingPlayers.size() == 1) {
-            String lastPlayer = waitingPlayers.get(0);
-            for (ClientHandler client : waitingRoom) {
-                if (client.playerName.equals(lastPlayer)) {
-                    client.sendMessage("GameOver:All other players left. You win! final scores:" + getFinalScores());
+            // Do not remove from playerScores or playerLevels to preserve scores
+            
+            synchronized (waitingPlayers) {
+                if (waitingPlayers.size() == 1 && gameStarted) {
+                    String lastPlayer = waitingPlayers.get(0);
+                    String finalScores = getFinalScores();
+                    System.out.println("Final scores for last player: " + finalScores);
+                    String message = finalScores.isEmpty() 
+                        ? "GameOver:All other players left. You win! No scores available"
+                        : "GameOver:All other players left. You win! Final scores:" + finalScores;
+                    for (ClientHandler client : waitingRoom) {
+                        if (client.playerName.equals(lastPlayer)) {
+                            client.sendMessage(message);
+                        }
+                    }
+                    endGame();
                 }
             }
-         
-        }
-            }
+            
             broadcastScores();
             sendPlayersList();
             broadcastWaitingPlayers();
@@ -194,11 +198,10 @@ public class Shefrah2 {
             } catch (IOException e) {
                 System.out.println("Error closing socket for " + playerName);
             }
-              // إذا لم يعد هناك لاعبون، أوقف التايمر
-    if (waitingRoom.isEmpty() && totalGameTimer != null) {
-        totalGameTimer.cancel();
-    }
-    
+            
+            if (waitingRoom.isEmpty() && totalGameTimer != null) {
+                totalGameTimer.cancel();
+            }
         }
 
         public void sendMessage(String message) {
@@ -207,20 +210,17 @@ public class Shefrah2 {
     }
 
     private static void broadcastScores() {
-    StringBuilder sb = new StringBuilder("SCORES:");
-    synchronized (playerScores) {
-        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-            // عرض النقاط فقط للاعبين في قائمة waitingPlayers
-            if (waitingPlayers.contains(entry.getKey())) {
+        StringBuilder sb = new StringBuilder("SCORES:");
+        synchronized (playerScores) {
+            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
                 sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
             }
         }
+        if (sb.length() > 7) {
+            sb.setLength(sb.length() - 1); // Remove trailing comma
+        }
+        broadcastMessage(sb.toString());
     }
-    if (sb.length() > 7) {
-        sb.setLength(sb.length() - 1); // Remove trailing comma
-    }
-    broadcastMessage(sb.toString());
-}
 
     private static void sendPlayersList() {
         String players = "Players:" + String.join(",", getPlayerNames());
@@ -228,11 +228,10 @@ public class Shefrah2 {
     }
 
     private static void broadcastWaitingPlayers() {
-    // استخدام LinkedHashSet لإزالة التكرارات مع الحفاظ على الترتيب
-    Set<String> uniquePlayers = new LinkedHashSet<>(waitingPlayers);
-    String waiting = "WaitingPlayers:" + String.join(",", uniquePlayers);
-    broadcastMessage(waiting);
-}
+        Set<String> uniquePlayers = new LinkedHashSet<>(waitingPlayers);
+        String waiting = "WaitingPlayers:" + String.join(",", uniquePlayers);
+        broadcastMessage(waiting);
+    }
 
     private static List<String> getPlayerNames() {
         List<String> names = new ArrayList<>();
@@ -245,6 +244,7 @@ public class Shefrah2 {
     }
 
     private static void broadcastMessage(String message) {
+        System.out.println("Broadcasting: " + message);
         synchronized (waitingRoom) {
             for (ClientHandler client : waitingRoom) {
                 client.sendMessage(message);
@@ -253,136 +253,136 @@ public class Shefrah2 {
     }
 
     private static void startCountdownIfNeeded() {
-    synchronized (waitingPlayers) {
-        if (waitingPlayers.size() >= 2 && !timerRunning) {
-            timerRunning = true;
-            gameTimer = new Timer();
-            gameTimer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    synchronized (waitingPlayers) {
-                        // إذا وصلنا لـ5 لاعبين نبدأ مباشرة
-                        if (waitingPlayers.size() >= 5) {
-                            cancel();
-                            checkAndStartGame(false); // false = ليس بسبب انتهاء المؤقت
-                            return;
-                        }
+        synchronized (waitingPlayers) {
+            if (waitingPlayers.size() >= 2 && !timerRunning) {
+                timerRunning = true;
+                gameTimer = new Timer();
+                gameTimer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        synchronized (waitingPlayers) {
+                            if (waitingPlayers.size() >= 5) {
+                                cancel();
+                                checkAndStartGame(false);
+                                return;
+                            }
 
-                        if (countdown <= 0) {
-                            cancel();
-                            timerRunning = false;
-                            checkAndStartGame(true); // true = بسبب انتهاء المؤقت
-                            return;
-                        }
+                            if (countdown <= 0) {
+                                cancel();
+                                timerRunning = false;
+                                checkAndStartGame(true);
+                                return;
+                            }
 
-                        broadcastMessage("Timer:" + countdown);
-                        countdown--;
+                            broadcastMessage("Timer:" + countdown);
+                            countdown--;
+                        }
                     }
-                }
-            }, 0, 1000);
+                }, 0, 1000);
+            }
         }
     }
-}
 
     private static void checkAndStartGame(boolean forceStart) {
-    synchronized (waitingPlayers) {
-        // تبدأ اللعبة إذا كان هناك 5 لاعبين أو إذا forceStart=true (عند انتهاء المؤقت)
-        if (waitingPlayers.size() >= 5 || (forceStart && waitingPlayers.size() >= 2)) {
-            if (gameTimer != null) {
-                gameTimer.cancel();
-                timerRunning = false;
-                gameStarted = true;
-                countdown = 30;
+        synchronized (waitingPlayers) {
+            if (waitingPlayers.size() >= 5 || (forceStart && waitingPlayers.size() >= 2)) {
+                if (gameTimer != null) {
+                    gameTimer.cancel();
+                    timerRunning = false;
+                    gameStarted = true;
+                    countdown = 30;
+                }
+
+                System.out.println("Game started with players: " + waitingPlayers);
+
+                synchronized (playerLevels) {
+                    waitingPlayers.forEach(player -> playerLevels.put(player, 0));
+                }
+
+                synchronized (playerScores) {
+                    waitingPlayers.forEach(player -> playerScores.put(player, 0));
+                }
+
+                synchronized (waitingRoom) {
+                    waitingRoom.forEach(client -> {
+                        if (waitingPlayers.contains(client.playerName)) {
+                            client.sendMessage("GameStart:" + picName.get(0));
+                            client.sendMessage("SCORES:" + 
+                                waitingPlayers.stream()
+                                    .map(p -> p + ":0")
+                                    .collect(Collectors.joining(",")));
+                        }
+                    });
+                }
+
+                startTotalGameTimer();
+            } else if (forceStart) {
+                broadcastMessage("NotEnoughPlayers:Need at least 2 players to start");
             }
-
-            System.out.println("Game started with players: " + waitingPlayers);
-
-            // تهيئة بيانات اللاعبين
-            synchronized (playerLevels) {
-                waitingPlayers.forEach(player -> playerLevels.put(player, 0));
-            }
-
-            synchronized (playerScores) {
-                waitingPlayers.forEach(player -> playerScores.put(player, 0));
-            }
-
-            // إرسال بداية اللعبة لكل اللاعبين
-            synchronized (waitingRoom) {
-                waitingRoom.forEach(client -> {
-                    if (waitingPlayers.contains(client.playerName)) {
-                        client.sendMessage("GameStart:" + picName.get(0));
-                        client.sendMessage("SCORES:" + 
-                            waitingPlayers.stream()
-                                .map(p -> p + ":0")
-                                .collect(Collectors.joining(",")));
-                    }
-                });
-            }
-
-            startTotalGameTimer();
-        } else if (forceStart) {
-            broadcastMessage("NotEnoughPlayers:Need at least 2 players to start");
         }
     }
-}
     
     private static String getFinalScores() {
-    StringBuilder sb = new StringBuilder();
-    synchronized (playerScores) {
-        for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-            if (waitingPlayers.contains(entry.getKey())) { // Only include players who stayed
+        StringBuilder sb = new StringBuilder();
+        synchronized (playerScores) {
+            System.out.println("playerScores: " + playerScores);
+            for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
                 sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
             }
         }
-    }
-    if (sb.length() > 0) {
-        sb.setLength(sb.length() - 1); // Remove trailing comma
-    }
-    return sb.toString();
-}
-    private static void startTotalGameTimer() {
-    remainingGameTime = TOTAL_GAME_TIME;
-    totalGameTimer = new Timer();
-    totalGameTimer.scheduleAtFixedRate(new TimerTask() {
-        @Override
-        public void run() {
-            if (remainingGameTime <= 0) {
-                endGameByTime();
-                totalGameTimer.cancel();
-                return;
-            }
-            
-            broadcastMessage("TotalGameTimer:" + remainingGameTime);
-            remainingGameTime--;
-            
-            // تحذير عند 30 ثانية المتبقية
-            if (remainingGameTime == 30) {
-                broadcastMessage("Warning:30 seconds remaining!");
-            }
+        if (sb.length() > 0) {
+            sb.setLength(sb.length() - 1); // Remove trailing comma
         }
-    }, 0, 1000); // تحديث كل ثانية
-}
+        return sb.toString();
+    }
+
+    private static void startTotalGameTimer() {
+        remainingGameTime = TOTAL_GAME_TIME;
+        totalGameTimer = new Timer();
+        totalGameTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (remainingGameTime <= 0) {
+                    endGameByTime();
+                    totalGameTimer.cancel();
+                    return;
+                }
+                
+                broadcastMessage("TotalGameTimer:" + remainingGameTime);
+                remainingGameTime--;
+                
+                if (remainingGameTime == 30) {
+                    broadcastMessage("Warning:30 seconds remaining!");
+                }
+            }
+        }, 0, 1000);
+    }
     
-private static void endGameByTime() {
-    broadcastMessage("GameOver:Time's up! Final scores: " + getFinalScores());
-    endGame(); // Reuse the same cleanup method
-}
+    private static void endGameByTime() {
+        String finalScores = getFinalScores();
+        System.out.println("Final scores at time's up: " + finalScores);
+        String message = finalScores.isEmpty() 
+            ? "GameOver:Time's up! No scores available"
+            : "GameOver:Time's up! Final scores:" + finalScores;
+        broadcastMessage(message);
+        endGame();
+    }
+
     private static void endGame() {
-    // Stop the timer if running
-    timerRunning = false;
-    countdown = 30; // Reset for next game
-    
-    if (gameTimer != null) {
-        gameTimer.cancel();
+        timerRunning = false;
+        countdown = 30;
+        
+        if (gameTimer != null) {
+            gameTimer.cancel();
+        }
+        if (totalGameTimer != null) {
+            totalGameTimer.cancel();
+        }
+        
+        synchronized (waitingPlayers) {
+            waitingPlayers.clear();
+        }
+        
+        gameStarted = false;
     }
-    if (totalGameTimer != null) {
-        totalGameTimer.cancel();
-    }
-    
-    // Clear waiting players
-    synchronized (waitingPlayers) {
-        waitingPlayers.clear();
-    }
-}
-         
 }
