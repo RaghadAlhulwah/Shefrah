@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
@@ -21,6 +22,7 @@ public class Shefrah1 {
     private static final int TOTAL_GAME_TIME = 120; // 120 ثانية = دقيقتين
     private static int remainingGameTime = TOTAL_GAME_TIME;
     private static Timer totalGameTimer; 
+    private static volatile boolean gameStarted = false;
 
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(3280);
@@ -74,15 +76,14 @@ public class Shefrah1 {
                 String message;
                 while ((message = in.readLine()) != null) {
                     if (message.equals("play")) {
-                        synchronized (waitingPlayers) {
-                            if (waitingPlayers.size() < 5 && !waitingPlayers.contains(playerName)) {
-                                waitingPlayers.add(playerName);
-                            }
-                        }
-                        broadcastWaitingPlayers();
-                        startCountdownIfNeeded();
-                        checkAndStartGame();
-                    } else if (message.startsWith("answer:")) {
+    synchronized (waitingPlayers) {
+        if (!gameStarted && !waitingPlayers.contains(playerName) && waitingPlayers.size() < 5) {
+            waitingPlayers.add(playerName);
+            startCountdownIfNeeded();
+        }
+    }
+    broadcastWaitingPlayers();
+}else if (message.startsWith("answer:")) {
                         handleAnswer(message.substring(7));
                     } else if (message.equals("GET_PLAYERS")) {
                         // إرسال قائمة اللاعبين عند الطلب
@@ -227,9 +228,11 @@ public class Shefrah1 {
     }
 
     private static void broadcastWaitingPlayers() {
-        String waiting = "WaitingPlayers:" + String.join(",", waitingPlayers);
-        broadcastMessage(waiting);
-    }
+    // استخدام LinkedHashSet لإزالة التكرارات مع الحفاظ على الترتيب
+    Set<String> uniquePlayers = new LinkedHashSet<>(waitingPlayers);
+    String waiting = "WaitingPlayers:" + String.join(",", uniquePlayers);
+    broadcastMessage(waiting);
+}
 
     private static List<String> getPlayerNames() {
         List<String> names = new ArrayList<>();
@@ -250,87 +253,78 @@ public class Shefrah1 {
     }
 
     private static void startCountdownIfNeeded() {
+    synchronized (waitingPlayers) {
         if (waitingPlayers.size() >= 2 && !timerRunning) {
             timerRunning = true;
             gameTimer = new Timer();
             gameTimer.scheduleAtFixedRate(new TimerTask() {
                 @Override
                 public void run() {
-                    if (waitingPlayers.size() >= 5) {
-                        gameTimer.cancel();
-                        checkAndStartGame();
-                        return;
+                    synchronized (waitingPlayers) {
+                        // إذا وصلنا لـ5 لاعبين نبدأ مباشرة
+                        if (waitingPlayers.size() >= 5) {
+                            cancel();
+                            checkAndStartGame(false); // false = ليس بسبب انتهاء المؤقت
+                            return;
+                        }
+
+                        if (countdown <= 0) {
+                            cancel();
+                            timerRunning = false;
+                            checkAndStartGame(true); // true = بسبب انتهاء المؤقت
+                            return;
+                        }
+
+                        broadcastMessage("Timer:" + countdown);
+                        countdown--;
                     }
-                    if (countdown <= 0) {
-                        gameTimer.cancel();
-                        checkAndStartGame();
-                        return;
-                    }
-                    broadcastMessage("Timer:" + countdown);
-                    countdown--;
                 }
             }, 0, 1000);
         }
     }
+}
 
-    private static void checkAndStartGame() {
-    if (waitingPlayers.size() >= 5 || (timerRunning && countdown <= 0)) {
-        if (gameTimer != null) {
-            gameTimer.cancel();
-        }
-        timerRunning = false;
-        countdown = 30;
-        System.out.println("Game started!");
-
-        // Initialize player levels and scores for the game
-        synchronized (playerLevels) {
-            for (String player : waitingPlayers) {
-                playerLevels.put(player, 0);
+    private static void checkAndStartGame(boolean forceStart) {
+    synchronized (waitingPlayers) {
+        // تبدأ اللعبة إذا كان هناك 5 لاعبين أو إذا forceStart=true (عند انتهاء المؤقت)
+        if (waitingPlayers.size() >= 5 || (forceStart && waitingPlayers.size() >= 2)) {
+            if (gameTimer != null) {
+                gameTimer.cancel();
+                timerRunning = false;
+                gameStarted = true;
+                countdown = 30;
             }
-        }
-        synchronized (playerScores) {
-            for (String player : waitingPlayers) {
-                playerScores.put(player, 0);
-              /*  broadcastScores(); // إرسال النقاط الأولية فورًا
-                System.out.println("تم إرسال النقاط الأولية للاعب: " + player); // للتتبع */
+
+            System.out.println("Game started with players: " + waitingPlayers);
+
+            // تهيئة بيانات اللاعبين
+            synchronized (playerLevels) {
+                waitingPlayers.forEach(player -> playerLevels.put(player, 0));
             }
-        }
-        // إرسال النقاط الأولية للجميع
-            broadcastScores();
 
-        String initialScores = "SCORES:" + String.join(",", 
-    waitingPlayers.stream()
-        .map(p -> p + ":0")
-        .toArray(String[]::new)
-);
-broadcastMessage(initialScores);
-System.out.println("تم إرسال النقاط الأولية: " + initialScores);
+            synchronized (playerScores) {
+                waitingPlayers.forEach(player -> playerScores.put(player, 0));
+            }
 
-        // إرسال قائمة اللاعبين الجدد مع بدء اللعبة
-        broadcastScores();
-        
-        
-     for (ClientHandler client : waitingRoom) {
-                if (waitingPlayers.contains(client.playerName)) {
-                    client.sendMessage("GameStart:" + picName.get(0));
-                    // إرسال النتائج الأولية مباشرة لكل لاعب
-                    StringBuilder sb = new StringBuilder("SCORES:");
-                    synchronized (playerScores) {
-                        for (String player : waitingPlayers) {
-                            sb.append(player).append(":0,");
-                        }
+            // إرسال بداية اللعبة لكل اللاعبين
+            synchronized (waitingRoom) {
+                waitingRoom.forEach(client -> {
+                    if (waitingPlayers.contains(client.playerName)) {
+                        client.sendMessage("GameStart:" + picName.get(0));
+                        client.sendMessage("SCORES:" + 
+                            waitingPlayers.stream()
+                                .map(p -> p + ":0")
+                                .collect(Collectors.joining(",")));
                     }
-                    if (sb.length() > 7) {
-                        sb.setLength(sb.length() - 1);
-                    }
-                    client.sendMessage(sb.toString());
-                } else {
-                    client.sendMessage("StayInWaitingRoom");
-                }
+                });
             }
+
             startTotalGameTimer();
+        } else if (forceStart) {
+            broadcastMessage("NotEnoughPlayers:Need at least 2 players to start");
         }
-    }//تغيرت الميثود
+    }
+}
     
     private static String getFinalScores() {
     StringBuilder sb = new StringBuilder();
@@ -377,6 +371,13 @@ private static void endGameByTime() {
     // Stop the timer if running
     timerRunning = false;
     countdown = 30; // Reset for next game
+    
+    if (gameTimer != null) {
+        gameTimer.cancel();
+    }
+    if (totalGameTimer != null) {
+        totalGameTimer.cancel();
+    }
     
     // Clear waiting players
     synchronized (waitingPlayers) {
