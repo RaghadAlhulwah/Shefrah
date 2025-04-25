@@ -13,24 +13,24 @@ import java.util.*;
 import javax.swing.Timer;
 import java.awt.FlowLayout;
 
-public class ShClient1 extends JFrame {
+public class ShClient extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
-        picMap.put("pic1", "/shefrah2/imgSh2.jpg");
-        picMap.put("pic2", "/shefrah2/imgSh3.jpg");
-        picMap.put("pic3", "/shefrah2/imgSh4.jpg");
-        picMap.put("pic4", "/shefrah2/imgSh5.jpg");
-        picMap.put("pic5", "/shefrah2/imgSh6.jpg");
-        picMap.put("pic6", "/shefrah2/imgSh7.jpg");
-        picMap.put("pic7", "/shefrah2/imgSh8.jpg");
-        picMap.put("pic8", "/shefrah2/imgSh9.jpg");
-        picMap.put("pic9", "/shefrah2/imgSh10.jpg");
-        picMap.put("pic10", "/shefrah2/imgSh11.jpg");
-        picMap.put("pic11", "/shefrah2/imgSh12.jpg");
-        picMap.put("pic12", "/shefrah2/imgSh13.jpg");
-        picMap.put("pic13", "/shefrah2/imgSh14.jpg");
-        picMap.put("pic14", "/shefrah2/imgSh15.jpg");
+        picMap.put("pic1", "/shefrah2/img/1.png");
+        picMap.put("pic2", "/shefrah2/img/2.png");
+        picMap.put("pic3", "/shefrah2/img/3.png");
+        picMap.put("pic4", "/shefrah2/img/4.png");
+        picMap.put("pic5", "/shefrah2/img/5.png");
+        picMap.put("pic6", "/shefrah2/img/6.png");
+        picMap.put("pic7", "/shefrah2/img/7.png");
+        picMap.put("pic8", "/shefrah2/img/8.png");
+        picMap.put("pic9", "/shefrah2/img/9.png");
+        picMap.put("pic10", "/shefrah2/img/10.png");
+        picMap.put("pic11", "/shefrah2/img/11.png");
+        picMap.put("pic12", "/shefrah2/img/12.png");
+        picMap.put("pic13", "/shefrah2/img/13.png");
+        picMap.put("pic14", "/shefrah2/img/14.png");
     }
 
     private static JLabel totalGameTimerLabel;
@@ -54,7 +54,7 @@ public class ShClient1 extends JFrame {
             setLocationRelativeTo(null);            
          
             imgfield = new JLabel("", JLabel.CENTER);
-            ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
+            ImageIcon logo = new ImageIcon(getClass().getResource("/shefrah2/ShLOGO.png"));
             Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
             imgfield.setIcon(new ImageIcon(scaledImage));
             
@@ -99,7 +99,7 @@ public class ShClient1 extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient1(socket, playerName).setVisible(true);
+                new ShClient(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -113,7 +113,7 @@ public class ShClient1 extends JFrame {
     private String playerName;
     private final JButton playButton;
 
-    public ShClient1(Socket socket, String playerName) throws IOException {
+    public ShClient(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
