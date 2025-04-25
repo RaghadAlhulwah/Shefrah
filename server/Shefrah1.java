@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Shefrah1 {
+public class Shefrah2 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -121,10 +121,10 @@ public class Shefrah1 {
                 synchronized (playerLevels) {
                     currentLevel = playerLevels.get(playerName);
                 }
-                
-                if (currentLevel >= answers.size()) {
-                    out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
-                              " final scores:" + getFinalScores());
+               if (currentLevel >= answers.size()) {
+                 out.println("GameOver:final scores:" + getFinalScores());
+                   /* out.println("GameOver: Your final score: " + playerScores.get(playerName) + 
+                          " final scores:" + getFinalScores()); */
                     return;
                 }
                 
