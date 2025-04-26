@@ -12,28 +12,30 @@ import java.net.*;
 import java.util.*;
 import javax.swing.Timer;
 import java.awt.FlowLayout;
+import java.util.stream.Collectors;
 
-public class ShClient extends JFrame {
+public class ShClient1 extends JFrame {
     private static final Map<String, String> picMap = new HashMap<>();
 
     static {
-        picMap.put("pic1", "/shefrah2/img/1.png");
-        picMap.put("pic2", "/shefrah2/img/2.png");
-        picMap.put("pic3", "/shefrah2/img/3.png");
-        picMap.put("pic4", "/shefrah2/img/4.png");
-        picMap.put("pic5", "/shefrah2/img/5.png");
-        picMap.put("pic6", "/shefrah2/img/6.png");
-        picMap.put("pic7", "/shefrah2/img/7.png");
-        picMap.put("pic8", "/shefrah2/img/8.png");
-        picMap.put("pic9", "/shefrah2/img/9.png");
-        picMap.put("pic10", "/shefrah2/img/10.png");
-        picMap.put("pic11", "/shefrah2/img/11.png");
-        picMap.put("pic12", "/shefrah2/img/12.png");
-        picMap.put("pic13", "/shefrah2/img/13.png");
-        picMap.put("pic14", "/shefrah2/img/14.png");
+        picMap.put("pic1", "/img/1.png");
+        picMap.put("pic2", "/img/2.png");
+        picMap.put("pic3", "/img/3.png");
+        picMap.put("pic4", "/img/4.png");
+        picMap.put("pic5", "/img/5.png");
+        picMap.put("pic6", "/img/6.png");
+        picMap.put("pic7", "/img/7.png");
+        picMap.put("pic8", "/img/8.png");
+        picMap.put("pic9", "/img/9.png");
+        picMap.put("pic10", "/img/10.png");
+        picMap.put("pic11", "/img/11.png");
+        picMap.put("pic12", "/img/12.png");
+        picMap.put("pic13", "/img/13.png");
+        picMap.put("pic14", "/img/14.png");
     }
 
     private static JLabel totalGameTimerLabel;
+    private static boolean gameStarted = false;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(NameInputFrame::new);
@@ -54,7 +56,7 @@ public class ShClient extends JFrame {
             setLocationRelativeTo(null);            
          
             imgfield = new JLabel("", JLabel.CENTER);
-            ImageIcon logo = new ImageIcon(getClass().getResource("/shefrah2/ShLOGO.png"));
+            ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
             Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
             imgfield.setIcon(new ImageIcon(scaledImage));
             
@@ -99,7 +101,7 @@ public class ShClient extends JFrame {
 
             try {
                 Socket socket = new Socket("localhost", 3280);
-                new ShClient(socket, playerName).setVisible(true);
+                new ShClient1(socket, playerName).setVisible(true);
                 this.dispose();
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this, "خطأ في الاتصال بالخادم", "خطأ", JOptionPane.ERROR_MESSAGE);
@@ -113,7 +115,7 @@ public class ShClient extends JFrame {
     private String playerName;
     private final JButton playButton;
 
-    public ShClient(Socket socket, String playerName) throws IOException {
+    public ShClient1(Socket socket, String playerName) throws IOException {
         this.socket = socket;
         this.playerName = playerName;
 
@@ -164,8 +166,14 @@ public class ShClient extends JFrame {
                 } else if (serverMessage.startsWith("Timer:")) {
                     updateTimer(Integer.parseInt(serverMessage.substring(6)));
                 } else if (serverMessage.startsWith("GameStart:")) {
-                    openGameStartFrame(serverMessage.substring(10));
-                } else if (serverMessage.startsWith("SCORES:")) {
+    gameStarted = true;  // تحديث حالة اللعبة
+    SwingUtilities.invokeLater(() -> {
+        playButton.setEnabled(false);  // تعطيل الزر
+        playButton.setText("اللعبة بدأت");  // تغيير نص الزر
+    });
+    openGameStartFrame(serverMessage.substring(10));
+}
+else if (serverMessage.startsWith("SCORES:")) {
                     updateScoreboard(serverMessage.substring(7));
                 } else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
@@ -243,63 +251,41 @@ public class ShClient extends JFrame {
     }
 
     private void showGameOver(String message) {
-        SwingUtilities.invokeLater(() -> {
-            System.out.println("GameOver message: " + message);
-            if (!message.contains("Final scores:") && !message.contains("No scores available")) {
-                System.out.println("Skipping GameOver message without scores");
-                return;
-            }
-            
-            Map<String, Integer> finalScores = new HashMap<>();
-            
-            if (message.toLowerCase().contains("final scores:")) {
-                String scoresPart = message.substring(message.indexOf("Final scores:") + 13).trim();
-                System.out.println("Scores part: " + scoresPart);
-                if (!scoresPart.isEmpty()) {
-                    String[] playerEntries = scoresPart.split(",");
-                    for (String entry : playerEntries) {
-                        if (entry.trim().isEmpty()) {
-                            System.out.println("Skipping empty entry");
-                            continue;
-                        }
-                        int lastColonIndex = entry.lastIndexOf(":");
-                        if (lastColonIndex <= 0 || lastColonIndex == entry.length() - 1) {
-                            System.out.println("Invalid entry format: " + entry);
-                            continue;
-                        }
-                        String playerName = entry.substring(0, lastColonIndex).trim();
-                        String scoreStr = entry.substring(lastColonIndex + 1).trim();
-                        if (playerName.isEmpty() || scoreStr.isEmpty()) {
-                            System.out.println("Empty player name or score in entry: " + entry);
-                            continue;
-                        }
-                        try {
-                            int score = Integer.parseInt(scoreStr);
-                            finalScores.put(playerName, score);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Invalid score format for entry: " + entry);
-                            e.printStackTrace();
-                        }
-                    }
-                } else {
-                    System.out.println("Scores part is empty");
-                }
-            } else if (message.contains("No scores available")) {
-                System.out.println("No scores available in message");
-            } else {
-                System.out.println("No 'Final scores:' found in message");
-            }
+    SwingUtilities.invokeLater(() -> {
+        Map<String, Integer> finalScores = new HashMap<>();
+        System.out.println("GameOver message: " + message);
 
-            System.out.println("Parsed finalScores: " + finalScores);
-            
-            if (!finalScores.isEmpty() || message.contains("No scores available")) {
-                for (Window window : Window.getWindows()) {
-                    window.dispose();
+        if (message.contains("Final scores:")) {
+            String scoresPart = message.substring(message.indexOf("Final scores:") + 13).trim();
+            if (!scoresPart.isEmpty()) {
+                String[] playerEntries = scoresPart.split(",");
+                for (String entry : playerEntries) {
+                    if (entry.trim().isEmpty()) continue;
+                    int lastColonIndex = entry.lastIndexOf(":");
+                    if (lastColonIndex <= 0 || lastColonIndex == entry.length() - 1) continue;
+                    String playerName = entry.substring(0, lastColonIndex).trim();
+                    String scoreStr = entry.substring(lastColonIndex + 1).trim();
+                    if (playerName.isEmpty() || scoreStr.isEmpty()) continue;
+                    try {
+                        int score = Integer.parseInt(scoreStr);
+                        finalScores.put(playerName, score);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Invalid score format for entry: " + entry);
+                    }
                 }
-                new WinnerFrame(finalScores).setVisible(true);
             }
-        });
-    }
+        }
+
+        if (!finalScores.isEmpty()) {
+            for (Window window : Window.getWindows()) {
+                window.dispose();
+            }
+            new WinnerFrame(finalScores).setVisible(true);
+        } else if (message.contains("No scores available")) {
+            JOptionPane.showMessageDialog(this, "لا توجد نقاط متاحة!", "نهاية اللعبة", JOptionPane.INFORMATION_MESSAGE);
+        }
+    });
+}
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -479,24 +465,28 @@ public class ShClient extends JFrame {
         }
         
         public void updateScoreboard(String scoresData) {
-            SwingUtilities.invokeLater(() -> {
-                for (JLabel label : playerScoreLabels) {
-                    label.setText("");
-                }
-
-                if (scoresData == null || scoresData.isEmpty()) return;
-
-                String[] playerEntries = scoresData.split(",");
-                for (int i = 0; i < Math.min(playerEntries.length, playerScoreLabels.length); i++) {
-                    String[] parts = playerEntries[i].split(":");
-                    if (parts.length == 2) {
-                        String playerName = parts[0];
-                        String score = parts[1];
-                        playerScoreLabels[i].setText(playerName + ": " + score + " نقطة");
-                    }
-                }
-            });
+    SwingUtilities.invokeLater(() -> {
+        for (JLabel label : playerScoreLabels) {
+            label.setText(""); // إعادة تعيين التسميات
         }
+
+        if (scoresData == null || scoresData.isEmpty() || scoresData.equals("SCORES:")) {
+            return; // لا توجد بيانات نقاط للعرض
+        }
+
+        String[] playerEntries = scoresData.split(",");
+        for (int i = 0; i < Math.min(playerEntries.length, playerScoreLabels.length); i++) {
+            String entry = playerEntries[i].trim();
+            if (entry.isEmpty()) continue; // تخطي الإدخالات الفارغة
+            String[] parts = entry.split(":");
+            if (parts.length == 2 && !parts[0].isEmpty() && !parts[1].isEmpty()) {
+                String playerName = parts[0];
+                String score = parts[1];
+                playerScoreLabels[i].setText(playerName + ": " + score + " نقطة");
+            }
+        }
+    });
+}
 
         public void showErrorMessage(String message) {
             SwingUtilities.invokeLater(() -> {
@@ -572,48 +562,35 @@ public class ShClient extends JFrame {
         }
 
         private void determineWinners(Map<String, Integer> scores) {
-            if (scores.isEmpty()) {
-                winnerArea.setText("لا يوجد نتائج نهائية متاحة\n\nقد يكون السبب انتهاء اللعبة مبكرًا، انسحاب جميع اللاعبين، أو مشكلة في الاتصال");
-                return;
-            }
-
-            int maxScore = Collections.max(scores.values());
-            List<String> winners = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-                if (entry.getValue() == maxScore) {
-                    winners.add(entry.getKey());
-                }
-            }
-
-            StringBuilder sb = new StringBuilder();
-            sb.append("النتائج النهائية:\n\n");
-            
-            List<Map.Entry<String, Integer>> sortedEntries = new ArrayList<>(scores.entrySet());
-            sortedEntries.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-
-            for (Map.Entry<String, Integer> entry : sortedEntries) {
-                sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-            }
-
-            sb.append("\n");
-
-            if (winners.size() == scores.size() && winners.size() > 1) {
-                sb.append("لا يوجد فائز! جميع اللاعبين لديهم نفس النتيجة");
-            } else if (winners.size() == 1) {
-                sb.append("الفائز: ").append(winners.get(0)).append("!");
-            } else {
-                sb.append("الفائزون:\n");
-                for (String winner : winners) {
-                    sb.append(winner).append("\n");
-                }
-            }
-
-            winnerArea.setText(sb.toString());
-
-            for (String winner : winners) {
-                highlightText(winner);
-            }
+    StringBuilder sb = new StringBuilder();
+    sb.append("النتائج النهائية:\n\n");
+    
+    // عرض جميع اللاعبين مع نقاطهم
+    scores.entrySet().stream()
+        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+        .forEach(entry -> {
+            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
+        });
+    
+    // تحديد الفائز/الفائزين
+    if (!scores.isEmpty()) {
+        int maxScore = Collections.max(scores.values());
+        List<String> winners = scores.entrySet().stream()
+            .filter(entry -> entry.getValue() == maxScore)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+        
+        sb.append("\n");
+        if (winners.size() == 1) {
+            sb.append("الفائز: ").append(winners.get(0)).append("!");
+        } else {
+            sb.append("تعادل! الفائزون:\n");
+            winners.forEach(winner -> sb.append(winner).append("\n"));
         }
+    }
+    
+    winnerArea.setText(sb.toString());
+}
 
         private void highlightText(String textToHighlight) {
             String content = winnerArea.getText();
