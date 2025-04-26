@@ -1,3 +1,4 @@
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -18,7 +19,7 @@ public class Shefrah1 {
     private static final List<Integer> answers = Arrays.asList(
        15, 5, 2, 12, 6, 3, 11, 11, 7, 5, 2, 10, 14, 57
     );
-    private static final int TOTAL_GAME_TIME = 120; // 120 ثانية = دقيقتين
+    private static final int TOTAL_GAME_TIME = 180; // 120 ثانية = دقيقتين
     private static int remainingGameTime = TOTAL_GAME_TIME;
     private static Timer totalGameTimer; 
     private static volatile boolean gameStarted = false;
@@ -199,6 +200,7 @@ public class Shefrah1 {
             
             try {
                 socket.close();
+                System.out.println("Player leave: " + playerName);
             } catch (IOException e) {
                 System.out.println("Error closing socket for " + playerName);
             }
@@ -252,13 +254,18 @@ public class Shefrah1 {
     }
 
     private static void broadcastMessage(String message) {
-        System.out.println("Broadcasting: " + message);
-        synchronized (waitingRoom) {
-            for (ClientHandler client : waitingRoom) {
+    System.out.println("Broadcasting: " + message);
+    synchronized (waitingRoom) {
+        for (ClientHandler client : waitingRoom) {
+            if (message.startsWith("GameOver:") && !waitingPlayers.contains(client.playerName)) {
+                // إرسال رسالة مختلفة للاعبين غير المشاركين
+                client.sendMessage("Notification:اللعبة انتهت. لم تشارك في هذه الجولة.");
+            } else {
                 client.sendMessage(message);
             }
         }
     }
+}
 
     private static void startCountdownIfNeeded() {
         synchronized (waitingPlayers) {
