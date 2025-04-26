@@ -130,14 +130,21 @@ public class ShClient1 extends JFrame {
 
         JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 24));
+        
+        JPanel centPanel = new JPanel();
+        centPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
-        JTextArea connectedPlayers = new JTextArea(10,50);
+        JTextArea connectedPlayers = new JTextArea(15,30);
+        connectedPlayers.setFont(new Font("Arial", Font.PLAIN, 16));
         connectedPlayers.setEditable(false);
+        
+        JScrollPane scrollPane = new JScrollPane(connectedPlayers);
+        centPanel.add(scrollPane);
 
         playButton = new JButton("جاهز");
 
         add(title, BorderLayout.NORTH);
-        add(new JScrollPane(connectedPlayers), BorderLayout.CENTER);
+        add(centPanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(playButton);
@@ -153,6 +160,7 @@ public class ShClient1 extends JFrame {
 
         new Thread(() -> readServerMessages(connectedPlayers)).start();
     }
+    
    
     private void readServerMessages(JTextArea connectedPlayers) {
         try {
@@ -166,14 +174,14 @@ public class ShClient1 extends JFrame {
                 } else if (serverMessage.startsWith("Timer:")) {
                     updateTimer(Integer.parseInt(serverMessage.substring(6)));
                 } else if (serverMessage.startsWith("GameStart:")) {
-    gameStarted = true;  // تحديث حالة اللعبة
-    SwingUtilities.invokeLater(() -> {
-        playButton.setEnabled(false);  // تعطيل الزر
-        playButton.setText("اللعبة بدأت");  // تغيير نص الزر
-    });
-    openGameStartFrame(serverMessage.substring(10));
-}
-else if (serverMessage.startsWith("SCORES:")) {
+                        gameStarted = true;  // تحديث حالة اللعبة
+                        SwingUtilities.invokeLater(() -> {
+                        playButton.setEnabled(false);  // تعطيل الزر
+                        playButton.setText("اللعبة بدأت");  // تغيير نص الزر
+                    });
+                          openGameStartFrame(serverMessage.substring(10));
+                }
+                  else if (serverMessage.startsWith("SCORES:")) {
                     updateScoreboard(serverMessage.substring(7));
                 } else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
@@ -251,12 +259,19 @@ else if (serverMessage.startsWith("SCORES:")) {
     }
 
     private void showGameOver(String message) {
-    SwingUtilities.invokeLater(() -> {
-        Map<String, Integer> finalScores = new HashMap<>();
-        System.out.println("GameOver message: " + message);
+        SwingUtilities.invokeLater(() -> {
+            Map<String, Integer> finalScores = new HashMap<>();
+            System.out.println("GameOver message: " + message);
 
-        if (message.contains("Final scores:")) {
-            String scoresPart = message.substring(message.indexOf("Final scores:") + 13).trim();
+            // تخطي الرسائل غير المرتبطة بالنتائج
+            if (!message.contains("Final scores:") && !message.contains("No scores available")) {
+                System.out.println("Skipping GameOver message without scores");
+                return;
+            }
+
+        // تحليل النقاط النهائية
+            if (message.contains("Final scores:")) {
+                String scoresPart = message.substring(message.indexOf("Final scores:") + 13).trim();
             if (!scoresPart.isEmpty()) {
                 String[] playerEntries = scoresPart.split(",");
                 for (String entry : playerEntries) {
@@ -276,16 +291,20 @@ else if (serverMessage.startsWith("SCORES:")) {
             }
         }
 
-        if (!finalScores.isEmpty()) {
+        // التحقق مما إذا كان اللاعب مشاركًا (اسمه موجود في finalScores)
+        if (!finalScores.containsKey(playerName) && !message.contains("No scores available")) {
+            // اللاعب غير مشارك، لا تفعل شيئًا (ابق في الواجهة الحالية)
+            JOptionPane.showMessageDialog(this, "لم تشارك في اللعبة!", "معلومات", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // إذا كان اللاعب مشاركًا أو لا توجد نقاط متاحة، اعرض WinnerFrame
             for (Window window : Window.getWindows()) {
-                window.dispose();
+            window.dispose();
             }
             new WinnerFrame(finalScores).setVisible(true);
-        } else if (message.contains("No scores available")) {
-            JOptionPane.showMessageDialog(this, "لا توجد نقاط متاحة!", "نهاية اللعبة", JOptionPane.INFORMATION_MESSAGE);
-        }
-    });
-}
+        });
+    }
 
     private void openReadyPlayersFrame() {
         SwingUtilities.invokeLater(() -> {
@@ -418,7 +437,7 @@ else if (serverMessage.startsWith("SCORES:")) {
             topPanel = new JPanel();
             topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
             
-            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 02:00", JLabel.CENTER);
+            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 03:00", JLabel.CENTER);
             totalGameTimerLabel.setFont(new Font("Arial", Font.BOLD, 18));
             totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
             
