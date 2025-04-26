@@ -3,7 +3,7 @@ import java.net.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class Shefrah2 {
+public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
     private static int countdown = 30;
@@ -107,6 +107,10 @@ public class Shefrah2 {
         }
 
         private void handleAnswer(String answer) {
+    if (!waitingPlayers.contains(playerName)) { // <-- لا تقبل إجابات من لاعبين غير مشاركين
+        out.println("Error: You didn't join the game!");
+        return;
+    }
             if (remainingGameTime <= 0) {
                 String finalScores = getFinalScores();
                 System.out.println("Final scores at time out: " + finalScores);
@@ -210,17 +214,21 @@ public class Shefrah2 {
     }
 
     private static void broadcastScores() {
-        StringBuilder sb = new StringBuilder("SCORES:");
-        synchronized (playerScores) {
+    StringBuilder sb = new StringBuilder("SCORES:");
+    synchronized (playerScores) {
+        synchronized (waitingPlayers) { // التأكد من تزامن waitingPlayers
             for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-                sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+                if (waitingPlayers.contains(entry.getKey())) { // فقط اللاعبين المشاركين
+                    sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+                }
             }
         }
-        if (sb.length() > 7) {
-            sb.setLength(sb.length() - 1); // Remove trailing comma
-        }
-        broadcastMessage(sb.toString());
     }
+    if (sb.length() > 7) {
+        sb.setLength(sb.length() - 1); // Remove trailing comma
+    }
+    broadcastMessage(sb.toString());
+}
 
     private static void sendPlayersList() {
         String players = "Players:" + String.join(",", getPlayerNames());
@@ -323,18 +331,18 @@ public class Shefrah2 {
     }
     
     private static String getFinalScores() {
-        StringBuilder sb = new StringBuilder();
-        synchronized (playerScores) {
-            System.out.println("playerScores: " + playerScores);
+    StringBuilder sb = new StringBuilder();
+    synchronized (playerScores) {
+        synchronized (waitingPlayers) {
             for (Map.Entry<String, Integer> entry : playerScores.entrySet()) {
-                sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+                if (waitingPlayers.contains(entry.getKey())) {
+                    sb.append(entry.getKey()).append(":").append(entry.getValue()).append(",");
+                }
             }
         }
-        if (sb.length() > 0) {
-            sb.setLength(sb.length() - 1); // Remove trailing comma
-        }
-        return sb.toString();
     }
+    return sb.length() > 0 ? sb.substring(0, sb.length() - 1) : "";
+}
 
     private static void startTotalGameTimer() {
         remainingGameTime = TOTAL_GAME_TIME;
@@ -360,6 +368,7 @@ public class Shefrah2 {
     
     private static void endGameByTime() {
         String finalScores = getFinalScores();
+        
         System.out.println("Final scores at time's up: " + finalScores);
         String message = finalScores.isEmpty() 
             ? "GameOver:Time's up! No scores available"
