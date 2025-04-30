@@ -3,6 +3,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.ComponentOrientation;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.MediaTracker;
@@ -12,6 +13,7 @@ import java.net.*;
 import java.util.*;
 import javax.swing.Timer;
 import java.awt.FlowLayout;
+import java.awt.GridBagLayout;
 import java.util.stream.Collectors;
 
 public class ShClient1 extends JFrame {
@@ -64,7 +66,7 @@ public class ShClient1 extends JFrame {
             cPanel.add(imgfield, BorderLayout.CENTER);
             
             JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
-            prompt.setFont(new Font("Arial", Font.BOLD, 20));
+            prompt.setFont(new Font("Al Nile", Font.BOLD, 32));
             nameField = new JTextField(15);
 
             submitButton = new JButton("انضم");
@@ -122,20 +124,20 @@ public class ShClient1 extends JFrame {
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         out = new PrintWriter(socket.getOutputStream(), true);
 
-        setTitle("شفرة - " + playerName);
+        setTitle("شفرة");
         setSize(700, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
         JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 24));
+        title.setFont(new Font("Al Nile", Font.BOLD, 24));
         
         JPanel centPanel = new JPanel();
         centPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
         JTextArea connectedPlayers = new JTextArea(15,30);
-        connectedPlayers.setFont(new Font("Arial", Font.PLAIN, 16));
+        connectedPlayers.setFont(new Font("Al Nile", Font.PLAIN, 16));
         connectedPlayers.setEditable(false);
         
         JScrollPane scrollPane = new JScrollPane(connectedPlayers);
@@ -365,27 +367,27 @@ public class ShClient1 extends JFrame {
         private JLabel timerLabel;
 
         public ReadyPlayersFrame(String playerName) {
-            setTitle("اللاعبون الجاهزون - " + playerName);
+            setTitle("شفرة");
             setSize(700, 600);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
             
             JLabel title = new JLabel("اللاعبون الجاهزون", SwingConstants.CENTER);
-            title.setFont(new Font("Arial", Font.BOLD, 24));
+            title.setFont(new Font("Al Nile", Font.BOLD, 24));
 
             JPanel centerPanel = new JPanel();
             centerPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
             readyPlayersArea = new JTextArea(15,30);
-            readyPlayersArea.setFont(new Font("Arial", Font.PLAIN, 16));
+            readyPlayersArea.setFont(new Font("Al Nile", Font.PLAIN, 16));
             readyPlayersArea.setEditable(false);
             
             JScrollPane scrollPane = new JScrollPane(readyPlayersArea);
             centerPanel.add(scrollPane);
 
-            timerLabel = new JLabel("الوقت المتبقي: 30 ثانية", SwingConstants.CENTER);
-            timerLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            timerLabel = new JLabel("الوقت المتبقي: 10 ثانية", SwingConstants.CENTER);
+            timerLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
             
             add(title, BorderLayout.NORTH);
             add(centerPanel, BorderLayout.CENTER);
@@ -413,6 +415,7 @@ public class ShClient1 extends JFrame {
 
     static class GameStartFrame extends JFrame {
         private JLabel displayField;
+        private JLabel gameName;
         private JTextField textField;
         private JButton submitButton;
         private PrintWriter out;
@@ -425,67 +428,116 @@ public class ShClient1 extends JFrame {
         private JButton closeButton;
 
         public GameStartFrame(Socket socket, String imageName, String playerName, PrintWriter out) {
-            this.playerName = playerName;
-            this.out = out;
+    this.playerName = playerName;
+    this.out = out;
 
-            setTitle("شفرة - بدء اللعبة - " + playerName);
-            setSize(800, 600);
-            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
+    // إعدادات أساسية للنافذة
+    setTitle("شفرة");
+    setSize(900, 700);
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    setLocationRelativeTo(null);
+    setLayout(new BorderLayout(10, 10));  // هوامش بين المكونات
 
-            topPanel = new JPanel();
-            topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
-            
-            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 03:00", JLabel.CENTER);
-            totalGameTimerLabel.setFont(new Font("Arial", Font.BOLD, 18));
-            totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            
-            errorMessageLabel = new JLabel("", JLabel.CENTER);
-            errorMessageLabel.setFont(new Font("Arial", Font.BOLD, 24));
-            errorMessageLabel.setForeground(Color.RED);
-            errorMessageLabel.setVisible(false);
-            errorMessageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            
-            topPanel.add(totalGameTimerLabel);
-            topPanel.add(Box.createVerticalStrut(10));
-            topPanel.add(errorMessageLabel);
-            
-            add(topPanel, BorderLayout.NORTH);
+    // ----- الجزء العلوي: العنوان والوقت والرسائل -----
+    topPanel = new JPanel();
+    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+    topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    
+    gameName = new JLabel("فُـكي الشفرة", JLabel.CENTER);
+    gameName.setFont(new Font("Al Nile", Font.BOLD, 36));
+    gameName.setAlignmentX(Component.CENTER_ALIGNMENT);
+    
+    totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 03:00", JLabel.CENTER);
+    totalGameTimerLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
+    totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            centerPanel = new JPanel(new BorderLayout());
-            displayField = new JLabel("", JLabel.CENTER);
-            updateImage(imageName);
-            centerPanel.add(displayField, BorderLayout.CENTER);
-            
-            initScoreboard();
-            centerPanel.add(scoreboardPanel, BorderLayout.EAST);
-            
-            add(centerPanel, BorderLayout.CENTER);
+    errorMessageLabel = new JLabel("", JLabel.CENTER);
+    errorMessageLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
+    errorMessageLabel.setForeground(Color.RED);
+    errorMessageLabel.setVisible(false);
+    errorMessageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            JPanel inputPanel = new JPanel();
-            textField = new JTextField(20);
-            submitButton = new JButton("إرسال");
-            closeButton = new JButton("خروج");
-            inputPanel.add(textField);
-            inputPanel.add(submitButton);
-            inputPanel.add(closeButton);
-            add(inputPanel, BorderLayout.SOUTH);
+    topPanel.add(gameName);
+    topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+    topPanel.add(totalGameTimerLabel);
+    topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+    topPanel.add(errorMessageLabel);
+    
+    add(topPanel, BorderLayout.NORTH);
 
-            submitButton.addActionListener(e -> {
-                String answer = textField.getText().trim();
-                if (!answer.isEmpty()) {
-                    out.println("answer:" + answer);
-                    textField.setText("");
-                }
-            });
-            
-            closeButton.addActionListener(e -> System.exit(0));
+    // ----- الجزء الأوسط: الصورة ولوحة النقاط -----
+    centerPanel = new JPanel(new BorderLayout(15, 0));  // مسافة بين الصورة ولوحة النقاط
+    centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+
+    // الصورة
+    displayField = new JLabel("", JLabel.CENTER);
+    displayField.setPreferredSize(new Dimension(500, 450));  // حجم أكثر تناسقًا
+    updateImage(imageName);
+
+    JPanel imagePanel = new JPanel(new GridBagLayout());
+    imagePanel.add(displayField);
+    centerPanel.add(imagePanel, BorderLayout.CENTER);
+
+    // لوحة النقاط
+    initScoreboard();
+    scoreboardPanel.setPreferredSize(new Dimension(250, -70)); // عرض أكبر للوضوح
+    scoreboardPanel.setBorder(BorderFactory.createTitledBorder(
+        BorderFactory.createLineBorder(Color.GRAY), "نقـاط اللاعبين"));
+    centerPanel.add(scoreboardPanel, BorderLayout.EAST);
+
+    add(centerPanel, BorderLayout.CENTER);
+
+    // ----- الجزء السفلي: حقل الإدخال والأزرار -----
+    JPanel inputPanel = new JPanel();
+    inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.X_AXIS));
+    inputPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+    textField = new JTextField(5);
+    textField.setFont(new Font("Al Nile", Font.PLAIN, 18));
+    //textField.setMaximumSize(new Dimension(1000, 35));
+    textField.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+    JPanel buttonContainer = new JPanel();
+    buttonContainer.setLayout(new BoxLayout(buttonContainer, BoxLayout.X_AXIS));
+    buttonContainer.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20));
+
+    submitButton = new JButton("إرسال");
+    submitButton.setFont(new Font("Al Nile", Font.BOLD, 16));
+    submitButton.setPreferredSize(new Dimension(100, 35));
+    
+    closeButton = new JButton("خروج");
+    closeButton.setFont(new Font("Al Nile", Font.BOLD, 16));
+    closeButton.setPreferredSize(new Dimension(100, 35));
+
+    buttonContainer.add(submitButton);
+    buttonContainer.add(Box.createRigidArea(new Dimension(15, 0)));
+    buttonContainer.add(closeButton);
+
+    inputPanel.add(Box.createHorizontalGlue());
+    inputPanel.add(textField);
+    inputPanel.add(Box.createRigidArea(new Dimension(15, 0)));
+    inputPanel.add(buttonContainer);
+    inputPanel.add(Box.createHorizontalGlue());
+
+    add(inputPanel, BorderLayout.SOUTH);
+
+    // ----- الأحداث -----
+    submitButton.addActionListener(e -> {
+        String answer = textField.getText().trim();
+        if (!answer.isEmpty()) {
+            out.println("answer:" + answer);
+            textField.setText("");
         }
+    });
+
+    closeButton.addActionListener(e -> System.exit(0));
+}
+
         
         public void updateScoreboard(String scoresData) {
     SwingUtilities.invokeLater(() -> {
         for (JLabel label : playerScoreLabels) {
+            label.setHorizontalAlignment(SwingConstants.RIGHT);
             label.setText(""); // إعادة تعيين التسميات
         }
 
@@ -528,11 +580,13 @@ public class ShClient1 extends JFrame {
         private void initScoreboard() {
             scoreboardPanel = new JPanel();
             scoreboardPanel.setLayout(new BoxLayout(scoreboardPanel, BoxLayout.Y_AXIS));
+            scoreboardPanel.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
             scoreboardPanel.setBorder(BorderFactory.createTitledBorder("نتائج اللاعبين"));
             
             for (int i = 0; i < 5; i++) {
                 playerScoreLabels[i] = new JLabel(" ");
-                playerScoreLabels[i].setFont(new Font("Arial", Font.PLAIN, 14));
+                playerScoreLabels[i].setHorizontalAlignment(SwingConstants.RIGHT);
+                playerScoreLabels[i].setFont(new Font("Al Nile", Font.PLAIN, 14));
                 scoreboardPanel.add(playerScoreLabels[i]);
             }
         }
@@ -560,7 +614,7 @@ public class ShClient1 extends JFrame {
         private JButton exitButton;
 
         public WinnerFrame(Map<String, Integer> finalScores) {
-            setTitle("نتائج النهائية");
+            setTitle("شفرة");
             setSize(500, 400);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
@@ -568,7 +622,7 @@ public class ShClient1 extends JFrame {
 
             winnerArea = new JTextArea();
             winnerArea.setEditable(false);
-            winnerArea.setFont(new Font("Arial", Font.PLAIN, 18));
+            winnerArea.setFont(new Font("Al Nile", Font.PLAIN, 18));
             winnerArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
 
             exitButton = new JButton("خروج");
