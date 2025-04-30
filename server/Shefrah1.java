@@ -1,4 +1,3 @@
-
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -7,7 +6,7 @@ import java.util.stream.Collectors;
 public class Shefrah1 {
     private static final ArrayList<ClientHandler> waitingRoom = new ArrayList<>();
     private static final ArrayList<String> waitingPlayers = new ArrayList<>();
-    private static int countdown = 30;
+    private static int countdown = 10;
     private static boolean timerRunning = false;
     private static Timer gameTimer;
     private static final Map<String, Integer> playerScores = new HashMap<>();
@@ -19,7 +18,7 @@ public class Shefrah1 {
     private static final List<Integer> answers = Arrays.asList(
        15, 5, 2, 12, 6, 3, 11, 11, 7, 5, 2, 10, 14, 57
     );
-    private static final int TOTAL_GAME_TIME = 180; // 120 ثانية = دقيقتين
+    private static final int TOTAL_GAME_TIME = 180; 
     private static int remainingGameTime = TOTAL_GAME_TIME;
     private static Timer totalGameTimer; 
     private static volatile boolean gameStarted = false;
@@ -305,7 +304,7 @@ public class Shefrah1 {
                     gameTimer.cancel();
                     timerRunning = false;
                     gameStarted = true;
-                    countdown = 30;
+                    countdown = 10;
                 }
 
                 System.out.println("Game started with players: " + waitingPlayers);
@@ -386,7 +385,7 @@ public class Shefrah1 {
 
     private static void endGame() {
         timerRunning = false;
-        countdown = 30;
+        countdown = 10;
         
         if (gameTimer != null) {
             gameTimer.cancel();
