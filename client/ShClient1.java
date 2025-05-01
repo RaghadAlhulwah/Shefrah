@@ -11,9 +11,32 @@ import java.awt.Window;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.List;
 import javax.swing.Timer;
 import java.awt.FlowLayout;
+import java.awt.Graphics;
 import java.awt.GridBagLayout;
+import java.util.stream.Collectors;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.Socket;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.Socket;
+import java.util.*;
+import java.util.stream.Collectors;
+
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+import java.net.Socket;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ShClient1 extends JFrame {
@@ -55,21 +78,22 @@ public class ShClient1 extends JFrame {
             setSize(700, 600);
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            setLocationRelativeTo(null);            
-         
+            setLocationRelativeTo(null);
+
             imgfield = new JLabel("", JLabel.CENTER);
             ImageIcon logo = new ImageIcon(getClass().getResource("/img/ShLOGO.png"));
             Image scaledImage = logo.getImage().getScaledInstance(300, 300, Image.SCALE_SMOOTH);
             imgfield.setIcon(new ImageIcon(scaledImage));
-            
+
             cPanel = new JPanel(new BorderLayout());
             cPanel.add(imgfield, BorderLayout.CENTER);
-            
+
             JLabel prompt = new JLabel("أدخل اسمك:", SwingConstants.CENTER);
             prompt.setFont(new Font("Al Nile", Font.BOLD, 32));
             nameField = new JTextField(15);
 
             submitButton = new JButton("انضم");
+            submitButton.setFont(new Font("Al Nile", Font.BOLD, 16));
             submitButton.addActionListener(e -> submitName());
 
             JPanel inputPanel = new JPanel();
@@ -77,16 +101,16 @@ public class ShClient1 extends JFrame {
 
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(submitButton);
-            
+
             middlePanel = new JPanel();
-            middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));  
+            middlePanel.setLayout(new BoxLayout(middlePanel, BoxLayout.Y_AXIS));
             middlePanel.add(Box.createVerticalStrut(50));
-            JPanel promptPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));  
+            JPanel promptPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
             promptPanel.add(prompt);
             middlePanel.add(promptPanel);
             middlePanel.add(Box.createVerticalStrut(20));
             middlePanel.add(inputPanel);
-            
+
             add(cPanel, BorderLayout.PAGE_START);
             add(middlePanel, BorderLayout.CENTER);
             add(buttonPanel, BorderLayout.PAGE_END);
@@ -132,18 +156,19 @@ public class ShClient1 extends JFrame {
 
         JLabel title = new JLabel("اللاعبون المتصلون", SwingConstants.CENTER);
         title.setFont(new Font("Al Nile", Font.BOLD, 24));
-        
+
         JPanel centPanel = new JPanel();
         centPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
-        JTextArea connectedPlayers = new JTextArea(15,30);
+        JTextArea connectedPlayers = new JTextArea(15, 30);
         connectedPlayers.setFont(new Font("Al Nile", Font.PLAIN, 16));
         connectedPlayers.setEditable(false);
-        
+
         JScrollPane scrollPane = new JScrollPane(connectedPlayers);
         centPanel.add(scrollPane);
 
         playButton = new JButton("جاهز");
+        playButton.setFont(new Font("Al Nile", Font.BOLD, 16));
 
         add(title, BorderLayout.NORTH);
         add(centPanel, BorderLayout.CENTER);
@@ -153,7 +178,7 @@ public class ShClient1 extends JFrame {
         add(buttonPanel, BorderLayout.SOUTH);
 
         out.println(playerName);
-        
+
         playButton.addActionListener(e -> {
             playButton.setEnabled(false);
             out.println("play");
@@ -162,8 +187,7 @@ public class ShClient1 extends JFrame {
 
         new Thread(() -> readServerMessages(connectedPlayers)).start();
     }
-    
-   
+
     private void readServerMessages(JTextArea connectedPlayers) {
         try {
             String serverMessage;
@@ -176,14 +200,13 @@ public class ShClient1 extends JFrame {
                 } else if (serverMessage.startsWith("Timer:")) {
                     updateTimer(Integer.parseInt(serverMessage.substring(6)));
                 } else if (serverMessage.startsWith("GameStart:")) {
-                        gameStarted = true;  // تحديث حالة اللعبة
-                        SwingUtilities.invokeLater(() -> {
-                        playButton.setEnabled(false);  // تعطيل الزر
-                        playButton.setText("اللعبة بدأت");  // تغيير نص الزر
+                    gameStarted = true;
+                    SwingUtilities.invokeLater(() -> {
+                        playButton.setEnabled(false);
+                        playButton.setText("اللعبة بدأت");
                     });
-                          openGameStartFrame(serverMessage.substring(10));
-                }
-                  else if (serverMessage.startsWith("SCORES:")) {
+                    openGameStartFrame(serverMessage.substring(10));
+                } else if (serverMessage.startsWith("SCORES:")) {
                     updateScoreboard(serverMessage.substring(7));
                 } else if (serverMessage.startsWith("NextRound:")) {
                     updateCurrentImage(serverMessage.substring(10));
@@ -265,44 +288,39 @@ public class ShClient1 extends JFrame {
             Map<String, Integer> finalScores = new HashMap<>();
             System.out.println("GameOver message: " + message);
 
-            // تخطي الرسائل غير المرتبطة بالنتائج
             if (!message.contains("Final scores:") && !message.contains("No scores available")) {
                 System.out.println("Skipping GameOver message without scores");
                 return;
             }
 
-        // تحليل النقاط النهائية
             if (message.contains("Final scores:")) {
                 String scoresPart = message.substring(message.indexOf("Final scores:") + 13).trim();
-            if (!scoresPart.isEmpty()) {
-                String[] playerEntries = scoresPart.split(",");
-                for (String entry : playerEntries) {
-                    if (entry.trim().isEmpty()) continue;
-                    int lastColonIndex = entry.lastIndexOf(":");
-                    if (lastColonIndex <= 0 || lastColonIndex == entry.length() - 1) continue;
-                    String playerName = entry.substring(0, lastColonIndex).trim();
-                    String scoreStr = entry.substring(lastColonIndex + 1).trim();
-                    if (playerName.isEmpty() || scoreStr.isEmpty()) continue;
-                    try {
-                        int score = Integer.parseInt(scoreStr);
-                        finalScores.put(playerName, score);
-                    } catch (NumberFormatException e) {
-                        System.out.println("Invalid score format for entry: " + entry);
+                if (!scoresPart.isEmpty()) {
+                    String[] playerEntries = scoresPart.split(",");
+                    for (String entry : playerEntries) {
+                        if (entry.trim().isEmpty()) continue;
+                        int lastColonIndex = entry.lastIndexOf(":");
+                        if (lastColonIndex <= 0 || lastColonIndex == entry.length() - 1) continue;
+                        String playerName = entry.substring(0, lastColonIndex).trim();
+                        String scoreStr = entry.substring(lastColonIndex + 1).trim();
+                        if (playerName.isEmpty() || scoreStr.isEmpty()) continue;
+                        try {
+                            int score = Integer.parseInt(scoreStr);
+                            finalScores.put(playerName, score);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Invalid score format for entry: " + entry);
+                        }
                     }
                 }
             }
-        }
 
-        // التحقق مما إذا كان اللاعب مشاركًا (اسمه موجود في finalScores)
-        if (!finalScores.containsKey(playerName) && !message.contains("No scores available")) {
-            // اللاعب غير مشارك، لا تفعل شيئًا (ابق في الواجهة الحالية)
-            JOptionPane.showMessageDialog(this, "لم تشارك في اللعبة!", "معلومات", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
+            if (!finalScores.containsKey(playerName) && !message.contains("No scores available")) {
+                JOptionPane.showMessageDialog(this, "لم تشارك في اللعبة!", "معلومات", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
 
-        // إذا كان اللاعب مشاركًا أو لا توجد نقاط متاحة، اعرض WinnerFrame
             for (Window window : Window.getWindows()) {
-            window.dispose();
+                window.dispose();
             }
             new WinnerFrame(finalScores).setVisible(true);
         });
@@ -320,10 +338,10 @@ public class ShClient1 extends JFrame {
         SwingUtilities.invokeLater(() -> {
             GameStartFrame frame = new GameStartFrame(socket, imageName, playerName, out);
             frame.setVisible(true);
-            
+
             String playersList = getPlayerListFromServer();
             frame.updateScoreboard("SCORES:" + createInitialScores(playersList));
-            
+
             for (Window window : Window.getWindows()) {
                 if (window instanceof ReadyPlayersFrame) {
                     window.dispose();
@@ -331,21 +349,21 @@ public class ShClient1 extends JFrame {
             }
         });
     }
-    
+
     private String createInitialScores(String playersList) {
         StringBuilder scores = new StringBuilder();
         String[] players = playersList.split(",");
-        
+
         for (String player : players) {
             if (!player.trim().isEmpty()) {
                 scores.append(player).append(":0,");
             }
         }
-        
+
         if (scores.length() > 0) {
             scores.setLength(scores.length() - 1);
         }
-        
+
         return scores.toString();
     }
 
@@ -362,6 +380,19 @@ public class ShClient1 extends JFrame {
         return playerName;
     }
 
+    private void updateTotalGameTimer(int timeLeft) {
+        SwingUtilities.invokeLater(() -> {
+            int minutes = timeLeft / 60;
+            int seconds = timeLeft % 60;
+            String timeText = String.format("الوقت المتبقي للعبة: %02d:%02d", minutes, seconds);
+            totalGameTimerLabel.setText(timeText);
+
+            if (timeLeft <= 30) {
+                totalGameTimerLabel.setForeground(Color.RED);
+            }
+        });
+    }
+
     static class ReadyPlayersFrame extends JFrame {
         private JTextArea readyPlayersArea;
         private JLabel timerLabel;
@@ -372,23 +403,23 @@ public class ShClient1 extends JFrame {
             setLayout(new BorderLayout());
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
-            
+
             JLabel title = new JLabel("اللاعبون الجاهزون", SwingConstants.CENTER);
             title.setFont(new Font("Al Nile", Font.BOLD, 24));
 
             JPanel centerPanel = new JPanel();
             centerPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 
-            readyPlayersArea = new JTextArea(15,30);
+            readyPlayersArea = new JTextArea(15, 30);
             readyPlayersArea.setFont(new Font("Al Nile", Font.PLAIN, 16));
             readyPlayersArea.setEditable(false);
-            
+
             JScrollPane scrollPane = new JScrollPane(readyPlayersArea);
             centerPanel.add(scrollPane);
 
             timerLabel = new JLabel("الوقت المتبقي: 10 ثانية", SwingConstants.CENTER);
             timerLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
-            
+
             add(title, BorderLayout.NORTH);
             add(centerPanel, BorderLayout.CENTER);
             add(timerLabel, BorderLayout.SOUTH);
@@ -428,142 +459,132 @@ public class ShClient1 extends JFrame {
         private JButton closeButton;
 
         public GameStartFrame(Socket socket, String imageName, String playerName, PrintWriter out) {
-    this.playerName = playerName;
-    this.out = out;
+            this.playerName = playerName;
+            this.out = out;
 
-    // إعدادات أساسية للنافذة
-    setTitle("شفرة");
-    setSize(900, 700);
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    setLocationRelativeTo(null);
-    setLayout(new BorderLayout(10, 10));  // هوامش بين المكونات
+            setTitle("شفرة");
+            setSize(900, 700);
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+            setLayout(new BorderLayout(10, 10));
 
-    // ----- الجزء العلوي: العنوان والوقت والرسائل -----
-    topPanel = new JPanel();
-    topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
-    topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-    
-    gameName = new JLabel("فُـكي الشفرة", JLabel.CENTER);
-    gameName.setFont(new Font("Al Nile", Font.BOLD, 36));
-    gameName.setAlignmentX(Component.CENTER_ALIGNMENT);
-    
-    totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 03:00", JLabel.CENTER);
-    totalGameTimerLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
-    totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            topPanel = new JPanel();
+            topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+            topPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-    errorMessageLabel = new JLabel("", JLabel.CENTER);
-    errorMessageLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
-    errorMessageLabel.setForeground(Color.RED);
-    errorMessageLabel.setVisible(false);
-    errorMessageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            gameName = new JLabel("فُـكي الشفرة", JLabel.CENTER);
+            gameName.setFont(new Font("Al Nile", Font.BOLD, 36));
+            gameName.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-    topPanel.add(gameName);
-    topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-    topPanel.add(totalGameTimerLabel);
-    topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-    topPanel.add(errorMessageLabel);
-    
-    add(topPanel, BorderLayout.NORTH);
+            totalGameTimerLabel = new JLabel("الوقت المتبقي للعبة: 03:00", JLabel.CENTER);
+            totalGameTimerLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
+            totalGameTimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-    // ----- الجزء الأوسط: الصورة ولوحة النقاط -----
-    centerPanel = new JPanel(new BorderLayout(15, 0));  // مسافة بين الصورة ولوحة النقاط
-    centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
+            errorMessageLabel = new JLabel("", JLabel.CENTER);
+            errorMessageLabel.setFont(new Font("Al Nile", Font.BOLD, 18));
+            errorMessageLabel.setForeground(Color.RED);
+            errorMessageLabel.setVisible(false);
+            errorMessageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-    // الصورة
-    displayField = new JLabel("", JLabel.CENTER);
-    displayField.setPreferredSize(new Dimension(500, 450));  // حجم أكثر تناسقًا
-    updateImage(imageName);
+            topPanel.add(gameName);
+            topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            topPanel.add(totalGameTimerLabel);
+            topPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            topPanel.add(errorMessageLabel);
 
-    JPanel imagePanel = new JPanel(new GridBagLayout());
-    imagePanel.add(displayField);
-    centerPanel.add(imagePanel, BorderLayout.CENTER);
+            add(topPanel, BorderLayout.NORTH);
 
-    // لوحة النقاط
-    initScoreboard();
-    scoreboardPanel.setPreferredSize(new Dimension(250, -70)); // عرض أكبر للوضوح
-    scoreboardPanel.setBorder(BorderFactory.createTitledBorder(
-        BorderFactory.createLineBorder(Color.GRAY), "نقـاط اللاعبين"));
-    centerPanel.add(scoreboardPanel, BorderLayout.EAST);
+            centerPanel = new JPanel(new BorderLayout(15, 0));
+            centerPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
-    add(centerPanel, BorderLayout.CENTER);
+            displayField = new JLabel("", JLabel.CENTER);
+            displayField.setPreferredSize(new Dimension(500, 450));
+            updateImage(imageName);
 
-    // ----- الجزء السفلي: حقل الإدخال والأزرار -----
-    JPanel inputPanel = new JPanel();
-    inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.X_AXIS));
-    inputPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+            JPanel imagePanel = new JPanel(new GridBagLayout());
+            imagePanel.add(displayField);
+            centerPanel.add(imagePanel, BorderLayout.CENTER);
 
-    textField = new JTextField(5);
-    textField.setFont(new Font("Al Nile", Font.PLAIN, 18));
-    //textField.setMaximumSize(new Dimension(1000, 35));
-    textField.setAlignmentX(Component.CENTER_ALIGNMENT);
+            initScoreboard();
+            scoreboardPanel.setPreferredSize(new Dimension(250, -70));
+            scoreboardPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.GRAY), "نقـاط اللاعبين"));
+            centerPanel.add(scoreboardPanel, BorderLayout.EAST);
 
-    JPanel buttonContainer = new JPanel();
-    buttonContainer.setLayout(new BoxLayout(buttonContainer, BoxLayout.X_AXIS));
-    buttonContainer.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20));
+            add(centerPanel, BorderLayout.CENTER);
 
-    submitButton = new JButton("إرسال");
-    submitButton.setFont(new Font("Al Nile", Font.BOLD, 16));
-    submitButton.setPreferredSize(new Dimension(100, 35));
-    
-    closeButton = new JButton("خروج");
-    closeButton.setFont(new Font("Al Nile", Font.BOLD, 16));
-    closeButton.setPreferredSize(new Dimension(100, 35));
+            JPanel inputPanel = new JPanel();
+            inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.X_AXIS));
+            inputPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-    buttonContainer.add(submitButton);
-    buttonContainer.add(Box.createRigidArea(new Dimension(15, 0)));
-    buttonContainer.add(closeButton);
+            textField = new JTextField(10);
+            textField.setFont(new Font("Al Nile", Font.PLAIN, 16));
+            textField.setMaximumSize(new Dimension(200, 30));
+            textField.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-    inputPanel.add(Box.createHorizontalGlue());
-    inputPanel.add(textField);
-    inputPanel.add(Box.createRigidArea(new Dimension(15, 0)));
-    inputPanel.add(buttonContainer);
-    inputPanel.add(Box.createHorizontalGlue());
+            JPanel buttonContainer = new JPanel();
+            buttonContainer.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 0));
 
-    add(inputPanel, BorderLayout.SOUTH);
+            submitButton = new JButton("إرسال");
+            submitButton.setFont(new Font("Al Nile", Font.BOLD, 14));
+            submitButton.setPreferredSize(new Dimension(90, 30));
 
-    // ----- الأحداث -----
-    submitButton.addActionListener(e -> {
-        String answer = textField.getText().trim();
-        if (!answer.isEmpty()) {
-            out.println("answer:" + answer);
-            textField.setText("");
+            closeButton = new JButton("خروج");
+            closeButton.setFont(new Font("Al Nile", Font.BOLD, 14));
+            closeButton.setPreferredSize(new Dimension(90, 30));
+
+            buttonContainer.add(submitButton);
+            buttonContainer.add(closeButton);
+
+            inputPanel.add(Box.createHorizontalGlue());
+            inputPanel.add(textField);
+            inputPanel.add(Box.createRigidArea(new Dimension(10, 0)));
+            inputPanel.add(buttonContainer);
+            inputPanel.add(Box.createHorizontalGlue());
+
+            add(inputPanel, BorderLayout.SOUTH);
+
+            submitButton.addActionListener(e -> {
+                String answer = textField.getText().trim();
+                if (!answer.isEmpty()) {
+                    out.println("answer:" + answer);
+                    textField.setText("");
+                }
+            });
+
+            closeButton.addActionListener(e -> System.exit(0));
         }
-    });
 
-    closeButton.addActionListener(e -> System.exit(0));
-}
-
-        
         public void updateScoreboard(String scoresData) {
-    SwingUtilities.invokeLater(() -> {
-        for (JLabel label : playerScoreLabels) {
-            label.setHorizontalAlignment(SwingConstants.RIGHT);
-            label.setText(""); // إعادة تعيين التسميات
-        }
+            SwingUtilities.invokeLater(() -> {
+                for (JLabel label : playerScoreLabels) {
+                    label.setHorizontalAlignment(SwingConstants.RIGHT);
+                    label.setText("");
+                }
 
-        if (scoresData == null || scoresData.isEmpty() || scoresData.equals("SCORES:")) {
-            return; // لا توجد بيانات نقاط للعرض
-        }
+                if (scoresData == null || scoresData.isEmpty() || scoresData.equals("SCORES:")) {
+                    return;
+                }
 
-        String[] playerEntries = scoresData.split(",");
-        for (int i = 0; i < Math.min(playerEntries.length, playerScoreLabels.length); i++) {
-            String entry = playerEntries[i].trim();
-            if (entry.isEmpty()) continue; // تخطي الإدخالات الفارغة
-            String[] parts = entry.split(":");
-            if (parts.length == 2 && !parts[0].isEmpty() && !parts[1].isEmpty()) {
-                String playerName = parts[0];
-                String score = parts[1];
-                playerScoreLabels[i].setText(playerName + ": " + score + " نقطة");
-            }
+                String[] playerEntries = scoresData.split(",");
+                for (int i = 0; i < Math.min(playerEntries.length, playerScoreLabels.length); i++) {
+                    String entry = playerEntries[i].trim();
+                    if (entry.isEmpty()) continue;
+                    String[] parts = entry.split(":");
+                    if (parts.length == 2 && !parts[0].isEmpty() && !parts[1].isEmpty()) {
+                        String playerName = parts[0];
+                        String score = parts[1];
+                        playerScoreLabels[i].setText(playerName + ": " + score + " نقطة");
+                    }
+                }
+            });
         }
-    });
-}
 
         public void showErrorMessage(String message) {
             SwingUtilities.invokeLater(() -> {
                 errorMessageLabel.setText(message);
                 errorMessageLabel.setVisible(true);
-                
+
                 topPanel.revalidate();
                 topPanel.repaint();
 
@@ -582,7 +603,7 @@ public class ShClient1 extends JFrame {
             scoreboardPanel.setLayout(new BoxLayout(scoreboardPanel, BoxLayout.Y_AXIS));
             scoreboardPanel.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
             scoreboardPanel.setBorder(BorderFactory.createTitledBorder("نتائج اللاعبين"));
-            
+
             for (int i = 0; i < 5; i++) {
                 playerScoreLabels[i] = new JLabel(" ");
                 playerScoreLabels[i].setHorizontalAlignment(SwingConstants.RIGHT);
@@ -610,87 +631,127 @@ public class ShClient1 extends JFrame {
     }
 
     static class WinnerFrame extends JFrame {
-        private JTextArea winnerArea;
         private JButton exitButton;
 
         public WinnerFrame(Map<String, Integer> finalScores) {
             setTitle("شفرة");
-            setSize(500, 400);
+            setSize(600,700);
             setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             setLocationRelativeTo(null);
-            setLayout(new BorderLayout());
 
-            winnerArea = new JTextArea();
-            winnerArea.setEditable(false);
-            winnerArea.setFont(new Font("Al Nile", Font.PLAIN, 18));
-            winnerArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+            // Create BackgroundPanel for the background image
+            BackgroundPanel bgPanel = new BackgroundPanel("/img/imgSh.png");
+            bgPanel.setLayout(new BorderLayout());
+            setContentPane(bgPanel);
 
+            // Center panel to hold the badge sections
+            JPanel centerPanel = new JPanel();
+            centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+            centerPanel.setOpaque(false);
+
+            // First place section
+            
+
+            JTextArea firstPlaceArea = new JTextArea();
+            firstPlaceArea.setFont(new Font("Al Nile", Font.PLAIN, 32));
+            firstPlaceArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+            firstPlaceArea.setEditable(false);
+            firstPlaceArea.setLineWrap(true);
+            firstPlaceArea.setWrapStyleWord(true);
+            firstPlaceArea.setOpaque(false);
+            firstPlaceArea.setBackground(new Color(0, 0, 0, 0));
+            firstPlaceArea.setAlignmentX(Component.CENTER_ALIGNMENT); // Center horizontally
+
+            // Second place section
+            
+
+            JTextArea secondPlaceArea = new JTextArea();
+            secondPlaceArea.setFont(new Font("Al Nile", Font.PLAIN, 32));
+            secondPlaceArea.setComponentOrientation(ComponentOrientation.RIGHT_TO_LEFT);
+            secondPlaceArea.setEditable(false);
+            secondPlaceArea.setLineWrap(true);
+            secondPlaceArea.setWrapStyleWord(true);
+            secondPlaceArea.setOpaque(false);
+            secondPlaceArea.setBackground(new Color(0, 0, 0, 0));
+            secondPlaceArea.setAlignmentX(Component.CENTER_ALIGNMENT); // Center horizontally
+
+            // Add components to center panel
+            centerPanel.add(Box.createVerticalStrut(20));
+        
+            centerPanel.add(Box.createVerticalStrut(10));
+            centerPanel.add(firstPlaceArea);
+            centerPanel.add(Box.createVerticalStrut(20));
+
+            centerPanel.add(Box.createVerticalStrut(10));
+            centerPanel.add(secondPlaceArea);
+            centerPanel.add(Box.createVerticalStrut(20));
+
+            // Wrap center panel in a scroll pane
+            JScrollPane scrollPane = new JScrollPane(centerPanel);
+            scrollPane.setOpaque(false);
+            scrollPane.getViewport().setOpaque(false);
+            scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+            // Exit button
             exitButton = new JButton("خروج");
+            exitButton.setFont(new Font("Al Nile", Font.BOLD, 16));
             exitButton.addActionListener(e -> System.exit(0));
 
-            add(new JScrollPane(winnerArea), BorderLayout.CENTER);
-            add(exitButton, BorderLayout.SOUTH);
+            // Add components to BackgroundPanel
+            bgPanel.add(scrollPane, BorderLayout.CENTER);
+            bgPanel.add(exitButton, BorderLayout.SOUTH);
 
-            determineWinners(finalScores);
+            determineWinners(finalScores, firstPlaceArea, secondPlaceArea);
         }
 
-        private void determineWinners(Map<String, Integer> scores) {
-    StringBuilder sb = new StringBuilder();
-    sb.append("النتائج النهائية:\n\n");
-    
-    // عرض جميع اللاعبين مع نقاطهم
-    scores.entrySet().stream()
-        .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-        .forEach(entry -> {
-            sb.append(entry.getKey()).append(": ").append(entry.getValue()).append(" نقطة\n");
-        });
-    
-    // تحديد الفائز/الفائزين
-    if (!scores.isEmpty()) {
-        int maxScore = Collections.max(scores.values());
-        List<String> winners = scores.entrySet().stream()
-            .filter(entry -> entry.getValue() == maxScore)
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toList());
-        
-        sb.append("\n");
-        if (winners.size() == 1) {
-            sb.append("الفائز: ").append(winners.get(0)).append("!");
-        } else {
-            sb.append("تعادل! الفائزون:\n");
-            winners.forEach(winner -> sb.append(winner).append("\n"));
-        }
-    }
-    
-    winnerArea.setText(sb.toString());
-}
-
-        private void highlightText(String textToHighlight) {
-            String content = winnerArea.getText();
-            int start = content.indexOf(textToHighlight);
-            while (start >= 0) {
-                int end = start + textToHighlight.length();
-                winnerArea.setSelectionStart(start);
-                winnerArea.setSelectionEnd(end);
-                winnerArea.replaceSelection(textToHighlight);
-                winnerArea.setSelectionColor(Color.YELLOW);
-                winnerArea.setSelectionStart(end);
-                winnerArea.setSelectionEnd(end);
-                start = content.indexOf(textToHighlight, end);
+        private void determineWinners(Map<String, Integer> scores, JTextArea firstPlaceArea, JTextArea secondPlaceArea) {
+            if (scores.isEmpty()) {
+                firstPlaceArea.setText("لا يوجد فائزون");
+                secondPlaceArea.setText("");
+                return;
             }
+
+            // Find the maximum score to determine the winner(s)
+            int maxScore = Collections.max(scores.values());
+            List<String> winners = scores.entrySet().stream()
+                .filter(entry -> entry.getValue() == maxScore)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+            // Other players (non-winners)
+            List<String> others = scores.entrySet().stream()
+                .filter(entry -> entry.getValue() < maxScore)
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+            // Display winners under "1st"
+            StringBuilder firstPlaceText = new StringBuilder();
+            if (winners.size() == 1) {
+                firstPlaceText.append(winners.get(0)).append("\n");
+            } else {
+                winners.forEach(winner -> firstPlaceText.append(winner).append("\n"));
+            }
+            firstPlaceArea.setText(firstPlaceText.toString());
+
+            // Display other players under "2nd"
+            StringBuilder secondPlaceText = new StringBuilder();
+            others.forEach(player -> secondPlaceText.append(player).append("\n"));
+            secondPlaceArea.setText(secondPlaceText.toString());
         }
     }
 
-    public void updateTotalGameTimer(int timeLeft) {
-        SwingUtilities.invokeLater(() -> {
-            int minutes = timeLeft / 60;
-            int seconds = timeLeft % 60;
-            String timeText = String.format("الوقت المتبقي للعبة: %02d:%02d", minutes, seconds);
-            totalGameTimerLabel.setText(timeText);
-            
-            if (timeLeft <= 30) {
-                totalGameTimerLabel.setForeground(Color.RED);
-            }
-        });
+    static class BackgroundPanel extends JPanel {
+        private Image backgroundImage;
+
+        public BackgroundPanel(String imagePath) {
+            backgroundImage = new ImageIcon(getClass().getResource(imagePath)).getImage();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+        }
     }
 }
