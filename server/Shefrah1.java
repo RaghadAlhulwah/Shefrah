@@ -1,3 +1,5 @@
+
+package com.mycompany.shefrah1;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -18,7 +20,7 @@ public class Shefrah1 {
     private static final List<Integer> answers = Arrays.asList(
        15, 5, 2, 12, 6, 3, 11, 11, 7, 5, 2, 10, 14, 57
     );
-    private static final int TOTAL_GAME_TIME = 180; 
+    private static final int TOTAL_GAME_TIME = 120; 
     private static int remainingGameTime = TOTAL_GAME_TIME;
     private static Timer totalGameTimer; 
     private static volatile boolean gameStarted = false;
